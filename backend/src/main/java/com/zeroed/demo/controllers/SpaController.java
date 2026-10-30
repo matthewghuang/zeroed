@@ -1,10 +1,12 @@
 package com.zeroed.controllers;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
 public class SpaController {
-	@RequestMapping	@RequestMapping({
+	@RequestMapping({
         "/{path:^(?!api$|error$)[^.]+}",
         "/{path:^(?!api$|error$)[^.]+}/**"
     })
