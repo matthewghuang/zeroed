@@ -1,4 +1,4 @@
-package com.zeroed.controllers;
+package com.zeroed.app.controllers;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
