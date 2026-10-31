@@ -71,7 +71,12 @@ On Windows, use `mvnw.cmd` instead of `./mvnw`
 
 Setup a Postgres DB either on Render or locally and set the environment variables.
 
-There is a `.env` file in `./backend` to set the environment variables. Spring Boot is setup to read from there on startup.
+```
+cd backend
+cp .env.example .env
+```
+
+Set the environment variables and Spring Boot will read it on startup.
 
 ### 4. Start the Development Servers
 
