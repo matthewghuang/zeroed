@@ -1,27 +1,27 @@
 import { useState } from 'react';
+import api from "../api";
 
 interface LoginFormProps {
     onSwitchToRegister: () => void;
 }
 
 function LoginForm({onSwitchToRegister}: LoginFormProps) {
-        // arguments
-        const [email, setEmail] = useState('');
-        const [password, setPassword] = useState('');
-    
-        const handleForm = (e) => {
-            e.preventDefault();
-    
-            fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            })
-            .then(
-                response => response.json(),
-                error => console.error('Failed!', error)
-            )
+    // arguments
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
+    const handleForm = async (e) => {
+        e.preventDefault();
+
+        try {
+            await api.get('/api/auth/csrf');
+
+            const response = await api.post('/api/auth/login', { email, password });
+            console.log('Authentication successful', response.data);
+        } catch (error) {
+            console.error('Authentication failed', error);
         }
+    };
     
     return (
     <div className="login-container">
