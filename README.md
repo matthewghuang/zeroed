@@ -18,10 +18,10 @@ The goal is to simplify shared expense management by automating calculations, tr
 
 ## Tech Stack
 
-| Component | Technology                  |
-| --------- | --------------------------- |
-| Frontend  | React, TypeScript, Vite     |
-| Backend   | Java 21, Spring Boot, Maven |
+| Component | Technology               |
+| --------- | ------------------------ |
+| Frontend  | React, TypeScript, Vite  |
+| Backend   | Java, Spring Boot, Maven |
 
 ## Project Structure
 
@@ -67,7 +67,11 @@ Navigate to the frontend directory and run `npm ci` to install dependencies.
 
 Navigate to the backend directory and run the Maven wrapper with clean compile to download dependencies and compile the application.
 
-On Windows, use mvnw.cmd instead of ./mvnw.
+On Windows, use `mvnw.cmd` instead of `./mvnw`
+
+Setup a Postgres DB either on Render or locally and set the environment variables.
+
+There is a `.env` file in `./backend` to set the environment variables. Spring Boot is setup to read from there on startup.
 
 ### 4. Start the Development Servers
 
