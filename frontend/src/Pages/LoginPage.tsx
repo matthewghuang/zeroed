@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import LoginHeader from './LoginHeader';
-import LoginForm from './LoginForm';
-import RegisterForm from './RegisterForm';
+import LoginHeader from '../components/LoginHeader';
+import LoginForm from '../components/LoginForm';
+import RegisterForm from '../components/RegisterForm';
 
 function LoginPage() {
     const [isRegistering, setIsRegistering] = useState(false);
