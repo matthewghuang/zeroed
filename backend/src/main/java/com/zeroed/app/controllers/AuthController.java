@@ -1,12 +1,27 @@
 package com.zeroed.app.controllers;
 
+import java.util.Locale;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.zeroed.app.dto.LoginRequest;
+import com.zeroed.app.dto.RegisterRequest;
 import com.zeroed.app.services.AuthService;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -25,10 +40,36 @@ public class AuthController {
 	}
 
 	@PostMapping("/register")
-	public String postMethodName(@RequestBody String entity) {
-		//TODO: process POST request
-		
-		return entity;
+	public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request) {
+		authService.register(request.email(), request.password());
+
+		return ResponseEntity.status(HttpStatus.CREATED).build();
 	}
+
+	@PostMapping("/login")
+	public ResponseEntity<Void> login(@Valid @RequestBody LoginRequest request,
+			HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
+		// normalize email
+		String email = request.email().trim().toLowerCase(Locale.ROOT);
+
+		Authentication authentication = authenticationManager.authenticate(
+			UsernamePasswordAuthenticationToken.unauthenticated(email, request.password())
+		);
+
+		// check if session currently exists
+		if (servletRequest.getSession(false) != null) {
+			servletRequest.changeSessionId();
+		}
+
+		SecurityContext context = SecurityContextHolder.createEmptyContext();
+
+		context.setAuthentication(authentication);
+		SecurityContextHolder.setContext(context);
+
+		securityContextRepository.saveContext(context, servletRequest, servletResponse);
+
+		return ResponseEntity.noContent().build();
+	}
+	
 	
 }
