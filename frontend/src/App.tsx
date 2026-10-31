@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import LoginPage from './components/LoginPage';
 
 function App() {
 
   return (
     <div>
-      <h1>Zeroed App</h1>
+      <LoginPage />
     </div>
   )
 }
