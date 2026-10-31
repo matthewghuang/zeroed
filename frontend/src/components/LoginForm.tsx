@@ -17,6 +17,9 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             })
+            .then(response => response.json(),
+                error => console.error('Failed!', error)
+            )
         }
     
     return (
@@ -43,7 +46,7 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
                     onChange={(e) => setPassword(e.target.value)}
                 ></input>
             </div>
-            
+
             <button type="submit" className="btn btn-primary">
                 Log In
             </button>

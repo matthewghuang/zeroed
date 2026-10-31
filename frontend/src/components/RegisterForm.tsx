@@ -18,6 +18,9 @@ function RegisterForm({onSwitchToLogin}: RegisterFormProps) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, username, password })
         })
+        .then(response => response.json(),
+            error => console.error('Failed!', error)
+        )
     }
 
     return (
