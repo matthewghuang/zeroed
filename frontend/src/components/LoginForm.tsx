@@ -12,12 +12,13 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
         const handleForm = (e) => {
             e.preventDefault();
     
-            fetch('/api/login', {
+            fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             })
-            .then(response => response.json(),
+            .then(
+                response => response.json(),
                 error => console.error('Failed!', error)
             )
         }

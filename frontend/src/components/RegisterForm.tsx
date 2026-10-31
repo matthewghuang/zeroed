@@ -13,12 +13,13 @@ function RegisterForm({onSwitchToLogin}: RegisterFormProps) {
     const handleForm = (e) => {
         e.preventDefault();
 
-        fetch('/api/register', {
+        fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, username, password })
         })
-        .then(response => response.json(),
+        .then(
+            response => response.json(),
             error => console.error('Failed!', error)
         )
     }
