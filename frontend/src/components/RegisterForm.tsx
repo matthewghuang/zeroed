@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import api from "../api";
 
 interface RegisterFormProps {
     onSwitchToLogin: () => void;
@@ -10,19 +11,18 @@ function RegisterForm({onSwitchToLogin}: RegisterFormProps) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
-    const handleForm = (e) => {
+    const handleForm = async (e) => {
         e.preventDefault();
 
-        fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, username, password })
-        })
-        .then(
-            response => response.json(),
-            error => console.error('Failed!', error)
-        )
-    }
+        try {
+            await api.get('/api/auth/csrf');
+
+            const response = await api.post('/api/auth/register', { username, email, password });
+            console.log('Authentication successful', response.data);
+        } catch (error) {
+            console.error('Authentication failed', error);
+        }
+    };
 
     return (
     <div className="login-container">
