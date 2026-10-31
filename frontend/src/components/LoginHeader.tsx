@@ -1,9 +1,11 @@
 function LoginHeader() {
 
   return (
-    <header className="login-header">
-        <h1 className="logo">Zeroed</h1>
-    </header>
+    <div className="container">
+        <header className="login-header">
+            <h1 className="logo">Zeroed</h1>
+        </header>
+    </div>
   )
 }
 
