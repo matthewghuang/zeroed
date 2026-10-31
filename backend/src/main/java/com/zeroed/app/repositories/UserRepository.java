@@ -7,5 +7,5 @@ import com.zeroed.app.models.User;
 public interface UserRepository extends JpaRepository<User, Long> {
 	Optional<User> findByEmail(String email);
 
-	boolean existsbyEmail(String email);
+	boolean existsByEmail(String email);
 }

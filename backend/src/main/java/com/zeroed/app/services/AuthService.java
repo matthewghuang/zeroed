@@ -21,7 +21,7 @@ public class AuthService {
 	public void register(String _email, String rawPassword) {
 		String normalizedEmail = _email.trim().toLowerCase(Locale.ROOT);
 
-		if (userRepository.existsbyEmail(normalizedEmail)) {
+		if (userRepository.existsByEmail(normalizedEmail)) {
 			throw new IllegalArgumentException("Email already registered");
 		}
 
