@@ -9,6 +9,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 @Configuration 
 public class SecurityConfig {
 	@Bean
@@ -23,7 +25,15 @@ public class SecurityConfig {
 	
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-		return http.authorizeHttpRequests(auth -> auth
+		return http
+			.exceptionHandling(ex -> ex
+				.authenticationEntryPoint((request, response, exception) -> 
+					response.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+			)
+			.csrf(csrf -> csrf.spa())
+			.formLogin(form -> form.disable())
+			.httpBasic(basic -> basic.disable())
+			.authorizeHttpRequests(auth -> auth
 			.requestMatchers(
 				"/api/auth/register",
 				"/api/auth/login",
