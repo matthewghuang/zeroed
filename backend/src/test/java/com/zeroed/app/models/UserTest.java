@@ -25,7 +25,7 @@ public class UserTest {
 
     @Test
     void createSetsCreationTime() {
-        User usr = new User("something@ow.com", "1234abcd");
+        User usr = new User("something@ow.com", "123bcd");
         Instant before = Instant.now();
 
         usr.onCreate();
