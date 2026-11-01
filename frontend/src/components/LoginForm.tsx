@@ -24,34 +24,36 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
     };
     
     return (
-    <div className="login-container">
-        <h2>Login</h2>
+    <div className="login-container card mb-3 shadow p-4">
+        <h2 className="text-center">Login</h2>
         <form className="login-form" onSubmit={handleForm}>
-
             <div className="form-group">
-                <label htmlFor="email">Email:</label>
+                <label htmlFor="email" className="form-label">Email:</label>
                 <input 
                     type="text" 
                     id="email" 
+                    className="form-control"
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)}
                 ></input>
             </div>
 
             <div className="form-group">
-                <label htmlFor="password">Password:</label>
+                <label htmlFor="password" className="form-label">Password:</label>
                 <input 
                     type="password" 
-                    id="password" 
+                    id="password"
+                    className="form-control"
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)}
                 ></input>
             </div>
-
-            <button type="submit" className="btn btn-primary">
-                Log In
-            </button>
-            <p>
+            <div className="text-center mt-3 mb-3">
+                <button type="submit" className="btn btn-primary text-center">
+                    Log In
+                </button>
+            </div>
+            <p className="text-center">
                 Don't have an account? <button type="button" onClick={onSwitchToRegister} className="btn-link">Sign up</button>
             </p>
         </form>

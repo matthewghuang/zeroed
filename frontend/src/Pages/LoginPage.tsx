@@ -9,14 +9,18 @@ function LoginPage() {
     return (
     <div>
         <LoginHeader />
-        <div className="body-content center">
-            <main className="form-container">
-                {isRegistering ? (
-                <RegisterForm onSwitchToLogin={() => setIsRegistering(false)} />
-                ) : (
-                <LoginForm onSwitchToRegister={() => setIsRegistering(true)} />
-                )}
-            </main>
+        <div className="container mt-5">
+            <div className="row justify-content-center">
+                <div className="col-md-6 col-lg-4">
+                    <main className="form-container">
+                        {isRegistering ? (
+                        <RegisterForm onSwitchToLogin={() => setIsRegistering(false)} />
+                        ) : (
+                        <LoginForm onSwitchToRegister={() => setIsRegistering(true)} />
+                        )}
+                    </main>
+                </div>
+            </div>
         </div>
     </div>
   )
