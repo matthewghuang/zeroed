@@ -25,44 +25,50 @@ function RegisterForm({onSwitchToLogin}: RegisterFormProps) {
     };
 
     return (
-    <div className="login-container">
-        <h2>Register</h2>
+    <div className="login-container card border border-secondary text-white mb-3 shadow-lg p-4" style={{backgroundColor: '#342835'}}>
+        <h2 className="text-center">Register</h2>
         <form className="login-form" onSubmit={handleForm}>
-
             <div className="form-group">
-                <label htmlFor="username">Username:</label>
+                <label htmlFor="username" className="form-label">Username:</label>
                 <input 
                     type="text" 
                     id="username" 
+                    className="form-control"
                     value={username} 
+                    placeholder='username'
                     onChange={(e) => setUsername(e.target.value)}
                 ></input>
             </div>
 
             <div className="form-group">
-                <label htmlFor="email">Email:</label>
+                <label htmlFor="email" className="form-label">Email:</label>
                 <input 
                     type="email" 
                     id="email" 
+                    className="form-control"
                     value={email} 
+                    placeholder='email'
                     onChange={(e) => setEmail(e.target.value)}
                 ></input>
             </div>
 
             <div className="form-group">
-                <label htmlFor="password">Password:</label>
+                <label htmlFor="password" className="form-label">Password:</label>
                 <input 
                     type="password" 
                     id="password" 
+                    className="form-control"
                     value={password} 
+                    placeholder='password'
                     onChange={(e) => setPassword(e.target.value)}
                 ></input>
             </div>
-
-            <button type="submit" className="btn btn-primary">
+            <div className="text-center mt-3 mb-3">
+            <button type="submit" className="btn btn-secondary text-center">
                 Sign Up
             </button>
-            <p>
+            </div>
+            <p className="text-center">
                 Already have an account? <button type="button" onClick={onSwitchToLogin} className="btn-link">Login</button>
             </p>
         </form>

@@ -24,7 +24,7 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
     };
     
     return (
-    <div className="login-container card mb-3 shadow p-4">
+    <div className="login-container card border border-secondary text-white mb-3 shadow-lg p-4" style={{backgroundColor: '#342835'}}>
         <h2 className="text-center">Login</h2>
         <form className="login-form" onSubmit={handleForm}>
             <div className="form-group">
@@ -34,6 +34,7 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
                     id="email" 
                     className="form-control"
                     value={email} 
+                    placeholder='email'
                     onChange={(e) => setEmail(e.target.value)}
                 ></input>
             </div>
@@ -45,11 +46,12 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
                     id="password"
                     className="form-control"
                     value={password} 
+                    placeholder='password'
                     onChange={(e) => setPassword(e.target.value)}
                 ></input>
             </div>
             <div className="text-center mt-3 mb-3">
-                <button type="submit" className="btn btn-primary text-center">
+                <button type="submit" className="btn btn-secondary text-center">
                     Log In
                 </button>
             </div>
