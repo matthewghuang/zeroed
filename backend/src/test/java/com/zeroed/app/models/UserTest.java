@@ -24,7 +24,22 @@ public class UserTest {
     }
 
     @Test
-    void createSetsCreationTime() {
+    void updateValues(){
+        User usr = new User("boblennon@gmail.com", "abcd1234"); 
+        
+        usr.setEmail("newmail@gmail.com");
+        usr.setPasswordHash("newpass");
+
+        assertEquals("newmail@gmail.com", usr.getEmail());
+        assertEquals("newpass", usr.getPasswordHash());
+        assertEquals(UserRole.REGULAR, usr.getRole());
+        assertNull(usr.getId());
+        assertNull(usr.getCreatedAt());
+    }
+
+
+    @Test
+    void createCreationTime() {
         User usr = new User("something@ow.com", "123bcd");
         Instant before = Instant.now();
 
@@ -34,4 +49,5 @@ public class UserTest {
         assertFalse(usr.getCreatedAt().isBefore(before));
     }
 
+    
 }
