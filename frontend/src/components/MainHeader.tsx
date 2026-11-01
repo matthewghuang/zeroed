@@ -1,10 +1,10 @@
-import logoImage from '../assets/zeroedIconCenter.png';
+import logoImage from '../assets/zeroedIconLeft.png';
 
 function LoginHeader() {
     return (
-        <header className="login-header d-flex justify-content-center align-items-center border-bottom border-black shadow-lg" style={{ 
+        <header className="login-header d-flex border-bottom border-black shadow-lg" style={{ 
                 height: '60px', 
-                backgroundColor: '#342835'
+                backgroundColor: '#281e2b'
             }}>
             <img 
                 src={logoImage} 
