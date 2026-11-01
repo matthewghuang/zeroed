@@ -56,8 +56,7 @@ public class UserTest {
 
         try{
             User usr = new User(test, "abc123");
-            usr.getEmail();
-            fail();
+            fail("Should have caught invalid email length");
         } catch (IllegalArgumentException e){
             assertEquals("email length exceeded", e.getMessage());
         }
@@ -70,7 +69,6 @@ public class UserTest {
 
         try{
             User usr = new User("idk@gmail.com", test);
-            usr.getPasswordHash();
             fail();
         } catch (IllegalArgumentException e){
             assertEquals("passwordhash length exceeded", e.getMessage());
