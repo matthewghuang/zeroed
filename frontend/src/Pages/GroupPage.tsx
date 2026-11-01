@@ -4,6 +4,7 @@ function GroupPage() {
     return (
         <div>
             <MainHeader />
+            
         </div>
     )
 }
