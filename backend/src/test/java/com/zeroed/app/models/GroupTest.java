@@ -23,8 +23,6 @@ public class GroupTest {
         assertEquals("AWESOME Group", test.getName());
         assertEquals(guy, test.getCreatedBy());
         assertEquals(creationDate, test.getCreatedAt());
-
-
     }
 
     @Test
@@ -40,8 +38,6 @@ public class GroupTest {
         assertEquals("the New GROUP!", test.getName());
         assertEquals(guy, test.getCreatedBy());
         assertEquals(creationDate, test.getCreatedAt());
-
-
     }
 
 }

@@ -49,5 +49,34 @@ public class UserTest {
         assertFalse(usr.getCreatedAt().isBefore(before));
     }
 
+    @Test
+    void invalidEmail(){
+        String og = "Hello";
+        String test = String.format("%-257s", og); 
+
+        try{
+            User usr = new User(test, "abc123");
+            usr.getEmail();
+            fail();
+        } catch (IllegalArgumentException e){
+            assertEquals("email length exceeded", e.getMessage());
+        }
+    }
+
+    @Test
+    void invalidPasswordHash(){
+        String og = "Hello";
+        String test = String.format("%-257s", og); 
+
+        try{
+            User usr = new User("idk@gmail.com", test);
+            usr.getPasswordHash();
+            fail();
+        } catch (IllegalArgumentException e){
+            assertEquals("passwordhash length exceeded", e.getMessage());
+        }
+    }
+
+
     
 }
