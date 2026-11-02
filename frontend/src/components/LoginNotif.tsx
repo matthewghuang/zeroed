@@ -1,6 +1,6 @@
 interface LoginNotifProps {
     message: string;
-    type?: 'error' | 'success'; // New prop to switch styling/headers
+    type?: 'error' | 'success';
 }
 
 function LoginNotif({ message, type = 'error' }: LoginNotifProps) {
