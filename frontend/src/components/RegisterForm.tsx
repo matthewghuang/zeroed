@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import api from "../api";
 import LoginNotif from './LoginNotif';
@@ -22,7 +21,7 @@ function RegisterForm({onSwitchToLogin}: RegisterFormProps) {
             setErrorMessage('');
             await api.get('/api/auth/csrf');
 
-            const response = await api.post('/api/auth/register', { username, email, password });
+            const response = await api.post('/api/auth/register', { email, password });
             console.log('Authentication successful', response.data);
             setSuccessMessage("Registration Successful!");
             await new Promise(resolve => setTimeout(resolve, 2000));
