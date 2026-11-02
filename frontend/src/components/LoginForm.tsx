@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import api from "../api";
+import LoginNotif from './LoginNotif';
 
 interface LoginFormProps {
     onSwitchToRegister: () => void;
@@ -9,17 +10,21 @@ function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     // arguments
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
 
     const handleForm = async (e) => {
         e.preventDefault();
 
         try {
+            setErrorMessage('');
             await api.get('/api/auth/csrf');
 
             const response = await api.post('/api/auth/login', { email, password });
             console.log('Authentication successful', response.data);
         } catch (error) {
             console.error('Authentication failed', error);
+            const msg = error.response?.data?.message || "Login failed. Check your email and password."
+            setErrorMessage(msg);
         }
     };
 
@@ -58,6 +63,7 @@ function LoginForm({ onSwitchToRegister }: LoginFormProps) {
                 <p className="text-center">
                     Don't have an account? <button type="button" onClick={onSwitchToRegister} className="btn-link">Sign up</button>
                 </p>
+            {errorMessage && <LoginNotif message={errorMessage} />}
             </form>
         </div>
     )
