@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import api from "../api";
+import LoginNotif from './LoginNotif';
 
 interface RegisterFormProps {
     onSwitchToLogin: () => void;
