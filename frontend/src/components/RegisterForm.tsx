@@ -1,5 +1,7 @@
+import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import api from "../api";
+import LoginNotif from './LoginNotif';
 
 interface RegisterFormProps {
     onSwitchToLogin: () => void;
@@ -10,17 +12,25 @@ function RegisterForm({onSwitchToLogin}: RegisterFormProps) {
     const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
     const handleForm = async (e) => {
         e.preventDefault();
 
         try {
+            setErrorMessage('');
             await api.get('/api/auth/csrf');
 
             const response = await api.post('/api/auth/register', { username, email, password });
             console.log('Authentication successful', response.data);
+            setSuccessMessage("Registration Successful!");
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            onSwitchToLogin();
         } catch (error) {
             console.error('Authentication failed', error);
+            const msg = error.response?.data?.message || "Registration failed. Check your email and password."
+            setErrorMessage(msg);
         }
     };
 
@@ -71,6 +81,8 @@ function RegisterForm({onSwitchToLogin}: RegisterFormProps) {
             <p className="text-center">
                 Already have an account? <button type="button" onClick={onSwitchToLogin} className="btn-link">Login</button>
             </p>
+            {successMessage && <LoginNotif message={successMessage} type="success" />}
+            {errorMessage && <LoginNotif message={errorMessage} />}
         </form>
     </div>
     )
