@@ -19,12 +19,12 @@ public class SecurityConfig {
 	}
 
 	@Bean 
-	public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) {
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
 		return configuration.getAuthenticationManager();
 	}
 	
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) {
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		return http
 			.exceptionHandling(ex -> ex
 				.authenticationEntryPoint((request, response, exception) -> 
