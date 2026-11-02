@@ -63,6 +63,11 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
             <p className="text-center">
                 Don't have an account? <button type="button" onClick={onSwitchToRegister} className="btn-link">Sign up</button>
             </p>
+            {registrationSuccess && (
+                <div className="alert alert-success text-center">
+                    Account created successfully! Please log in.
+                </div>
+            )}
             {errorMessage && <LoginNotif message={errorMessage} />}
         </form>
     </div>
