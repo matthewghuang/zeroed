@@ -13,9 +13,11 @@ function LoginHeader() {
                     style={{ height: '100%', width: 'auto', objectFit: 'contain' }} 
                 />
             </div>
-            <div className="d-flex gap-2 mb-3 border-bottom ms-auto">
-                <button className="btn btn-outline-light btn-sm">Expenses</button>
-                <button className="btn btn-outline-light btn-sm">Groups</button>
+            <div className="mb-2 border-bottom ms-auto">
+                <div className="d-flex gap-2">
+                    <button className="btn btn-outline-light btn-sm">Expenses</button>
+                    <button className="btn btn-outline-light btn-sm">Groups</button>
+                </div>
             </div>
             <div className="d-flex gap-2 ms-auto">
                 <button className="btn btn-outline-light btn-sm">Balance</button>

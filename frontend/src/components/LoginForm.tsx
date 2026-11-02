@@ -5,7 +5,7 @@ interface LoginFormProps {
     onSwitchToRegister: () => void;
 }
 
-function LoginForm({onSwitchToRegister}: LoginFormProps) {
+function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     // arguments
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -22,18 +22,18 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
             console.error('Authentication failed', error);
         }
     };
-    
+
     return (
-        <div className="login-container card border border-secondary text-white mb-3 shadow-lg p-4" style={{backgroundColor: '#342835'}}>
+        <div className="login-container card border border-secondary text-white mb-3 shadow-lg p-4" style={{ backgroundColor: '#342835' }}>
             <h2 className="text-center">Login</h2>
             <form className="login-form" onSubmit={handleForm}>
                 <div className="form-group">
                     <label htmlFor="email" className="form-label">Email:</label>
-                    <input 
-                        type="text" 
-                        id="email" 
+                    <input
+                        type="text"
+                        id="email"
                         className="form-control"
-                        value={email} 
+                        value={email}
                         placeholder='email'
                         onChange={(e) => setEmail(e.target.value)}
                     ></input>
@@ -41,11 +41,11 @@ function LoginForm({onSwitchToRegister}: LoginFormProps) {
 
                 <div className="form-group">
                     <label htmlFor="password" className="form-label">Password:</label>
-                    <input 
-                        type="password" 
+                    <input
+                        type="password"
                         id="password"
                         className="form-control"
-                        value={password} 
+                        value={password}
                         placeholder='password'
                         onChange={(e) => setPassword(e.target.value)}
                     ></input>
