@@ -24,7 +24,7 @@ public class GroupMembershipTest {
         assertEquals(usr, test.getUser());
         assertEquals(grp, test.getGroup());
         assertEquals(id, test.getId());
-        assertEquals(join, test.getJoinTime());
+        assertEquals(join, test.getJoinedAt());
 
     }
     

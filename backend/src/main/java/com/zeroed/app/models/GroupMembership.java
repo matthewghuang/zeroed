@@ -44,4 +44,36 @@ public class GroupMembership {
         this.id = new GroupMembershipId(user.getId(), group.getId());
         this.joinedAt = Instant.now();
     }
+
+	public GroupMembershipId getId() {
+		return this.id;
+	}
+
+	public void setId(GroupMembershipId id) {
+		this.id = id;
+	}
+
+	public User getUser() {
+		return this.user;
+	}
+
+	public void setUser(User user) {
+		this.user = user;
+	}
+
+	public Group getGroup() {
+		return this.group;
+	}
+
+	public void setGroup(Group group) {
+		this.group = group;
+	}
+
+	public Instant getJoinedAt() {
+		return this.joinedAt;
+	}
+
+	public void setJoinedAt(Instant joinedAt) {
+		this.joinedAt = joinedAt;
+	}
 }
