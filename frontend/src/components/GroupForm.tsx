@@ -24,12 +24,12 @@ function GroupForm({ onSwitchToView, onGroupCreated }: GroupFormProps) {
         try {
             setErrorMessage('');
             await api.get('/api/auth/csrf');
+            const response = await api.post('/api/groups', { name: groupName });
 
             if (onGroupCreated) {
                 onGroupCreated();
-            }
-
-            const response = await api.post('/api/groups', { name: groupName });
+            }            
+            
             console.log('Group creation successful', response.data);
             setSuccessMessage("Group Creation Successful!");
             await new Promise(resolve => setTimeout(resolve, 2000));
