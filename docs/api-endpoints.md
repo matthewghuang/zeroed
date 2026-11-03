@@ -107,6 +107,8 @@ Suggested response: `200 OK` with group details. Return `404 Not Found` when the
 
 List members of a group the caller is allowed to access.
 
+The caller must be a member, including admins. Return `401 Unauthorized` when not signed in and `404 Not Found` when the group does not exist or the caller is not a member.
+
 Suggested response: `200 OK` with safe profile fields only, such as:
 
 ```json
