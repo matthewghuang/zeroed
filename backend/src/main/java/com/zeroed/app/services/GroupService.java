@@ -1,11 +1,14 @@
 package com.zeroed.app.services;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.zeroed.app.models.Group;
 import com.zeroed.app.models.GroupMembership;
 import com.zeroed.app.models.User;
+import com.zeroed.app.models.UserRole;
 import com.zeroed.app.repositories.GroupMembershipRepository;
 import com.zeroed.app.repositories.GroupRepository;
 
@@ -33,5 +36,13 @@ public class GroupService {
         groupMembershipRepository.save(new GroupMembership(creator, group));
 
         return group;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Group> getGroupsForUser(User user) {
+        if (user.getRole() == UserRole.ADMIN) {
+            return groupRepository.findAll();
+        }
+        return groupMembershipRepository.findGroupsByUserId(user.getId());
     }
 }

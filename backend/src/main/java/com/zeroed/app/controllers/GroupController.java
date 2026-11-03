@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,6 +29,28 @@ public class GroupController {
     public GroupController(GroupService groupService, UserRepository userRepository) {
         this.groupService = groupService;
         this.userRepository = userRepository;
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getGroups(Authentication authentication) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User currentUser = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var groups = groupService.getGroupsForUser(currentUser).stream()
+                .map(group -> Map.of(
+                        "id", group.getId(),
+                        "name", group.getName(),
+                        "createdAt", group.getCreatedAt()))
+                .toList();
+        return ResponseEntity.ok(groups);
     }
 
     @PostMapping
