@@ -1,10 +1,18 @@
-function LoginHeader() {
+import logoImage from '../assets/zeroedIconCenter.png';
 
-  return (
-    <header className="login-header shadow">
-        <h1 className="logo">Zeroed</h1>
-    </header>
-  )
+function LoginHeader() {
+    return (
+        <header className="login-header d-flex justify-content-center align-items-center border-bottom border-black shadow-lg" style={{ 
+                height: '60px', 
+                backgroundColor: '#342835'
+            }}>
+            <img 
+                src={logoImage} 
+                alt="Zeroed Logo" 
+                style={{ height: '100%', width: 'auto', objectFit: 'contain' }} 
+            />
+        </header>
+    );
 }
 
 export default LoginHeader
