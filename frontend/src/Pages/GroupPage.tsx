@@ -16,7 +16,7 @@ function GroupPage() {
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
-    useEffect(() => {
+
         const fetchGroups = async () => {
             try {
                 const response = await api.get('/api/groups');
@@ -34,7 +34,8 @@ function GroupPage() {
                 console.error("Failed to fetch groups", error);
             }
         }
-        fetchGroups();
+        useEffect(() => {
+            fetchGroups();
     }, []);
 
 
@@ -90,9 +91,9 @@ function GroupPage() {
                 </div>
                 <main className="d-flex flex-grow-1 justify-content-center align-items-center p-4">
                     {isViewing ? (
-                        <GroupView onSwitchToView={() => setIsViewing(false)}/>
+                        <GroupView onSwitchToView={() => setIsViewing(false)} selectedGroup={selectedGroup}/>
                     ) : (
-                        <GroupForm onSwitchToView={() => setIsViewing(true)} />
+                        <GroupForm onSwitchToView={() => setIsViewing(true)} onGroupCreated={fetchGroups}/>
                     )}
                 </main>                   
             </div>
