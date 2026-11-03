@@ -1,6 +1,6 @@
 package com.zeroed.app.controllers;
 
-import java.util.Map;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.zeroed.app.dto.CreateGroupRequest;
+import com.zeroed.app.dto.GroupResponse;
 import com.zeroed.app.models.Group;
 import com.zeroed.app.models.User;
 import com.zeroed.app.repositories.UserRepository;
@@ -32,7 +33,7 @@ public class GroupController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getGroups(Authentication authentication) {
+    public ResponseEntity<List<GroupResponse>> getGroups(Authentication authentication) {
         if (authentication == null
                 || !authentication.isAuthenticated()
                 || authentication instanceof AnonymousAuthenticationToken) {
@@ -44,17 +45,14 @@ public class GroupController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        var groups = groupService.getGroupsForUser(currentUser).stream()
-                .map(group -> Map.of(
-                        "id", group.getId(),
-                        "name", group.getName(),
-                        "createdAt", group.getCreatedAt()))
+        List<GroupResponse> groups = groupService.getGroupsForUser(currentUser).stream()
+                .map(group -> new GroupResponse(group.getId(), group.getName(), group.getCreatedAt()))
                 .toList();
         return ResponseEntity.ok(groups);
     }
 
     @PostMapping
-    public ResponseEntity<?> createGroup(@Valid @RequestBody CreateGroupRequest request,
+    public ResponseEntity<GroupResponse> createGroup(@Valid @RequestBody CreateGroupRequest request,
                                          Authentication authentication) {
         // get the current user from the session
         if (authentication == null
@@ -74,6 +72,6 @@ public class GroupController {
 
         // return 201 with the new group
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("id", group.getId(), "name", group.getName()));
+                .body(new GroupResponse(group.getId(), group.getName(), group.getCreatedAt()));
     }
 }
