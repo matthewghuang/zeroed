@@ -6,7 +6,9 @@ import GroupView from '../components/GroupView';
 
 
 function GroupPage() {
-    const [isViewing, setIsViewing] = useState(false);
+    const [isViewing, setIsViewing] = useState(true);
+
+    
 
     return (
         <div className="d-flex flex-column vh-100 overflow-hidden" style={{
@@ -45,15 +47,16 @@ function GroupPage() {
                     {/* Bottom Bumper */}
                     <div className="p-3 border-top border-black" style={{ backgroundColor: '#342835', height: '50px' }}></div>
                 </div>
-                    {/* Main Content */}
-                    <main className="d-flex flex-grow-1 justify-content-center align-items-center p-4">
-                        {isViewing ? (
-                            <GroupView onSwitchToView={() => setIsViewing(false)}/>
-                        ) : (
-                            <GroupForm onSwitchToView={() => setIsViewing(true)} />
-                        )}
-                </main>
+            <main className="d-flex flex-grow-1 justify-content-center align-items-center p-4">
+                {isViewing ? (
+                    <GroupView onSwitchToView={() => setIsViewing(false)}/>
+                ) : (
+                    <GroupForm onSwitchToView={() => setIsViewing(true)} />
+                )}
+            </main>                   
             </div>
+            {/* Main Content */}
+         
         </div>
     )
 }

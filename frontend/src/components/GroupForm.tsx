@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import api from "../api";
+import LoginNotif from './ErrorNotif';
 
 interface GroupFormProps {
     onSwitchToView: () => void;
@@ -8,19 +9,27 @@ interface GroupFormProps {
 function GroupForm({ onSwitchToView }: GroupFormProps) {
     const [groupName, setGroupName] = useState('')
 
-        const handleForm = async (e: any) => {
-            e.preventDefault();
-    
-            try {
-                await api.get('/api/auth/csrf');
-    
-                const response = await api.post('/api/groups', { name: groupName });
-                console.log('Group creation successful', response.data);
-                onSwitchToView()
-            } catch (error: any) {
-                console.error('Group creation failed', error);
-            }
-        };
+    const [errorMessage, setErrorMessage] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+
+    const handleForm = async (e: any) => {
+        e.preventDefault();
+
+        try {
+            setErrorMessage('');
+            await api.get('/api/auth/csrf');
+
+            const response = await api.post('/api/groups', { name: groupName });
+            console.log('Group creation successful', response.data);
+            setSuccessMessage("Group Creation Successful!");
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            onSwitchToView()
+        } catch (error: any) {
+            console.error('Group creation failed', error);
+            const msg = "Group creation failed. Empty box."
+            setErrorMessage(msg);
+        }
+    };
 
     return (
         <div className="group-container card border border-secondary text-white mb-3 shadow-lg p-4" style={{ backgroundColor: '#342835' }}>
@@ -41,6 +50,8 @@ function GroupForm({ onSwitchToView }: GroupFormProps) {
                         Create Group
                     </button>
                 </div>
+                {successMessage && <LoginNotif message={successMessage} type="success" />}
+                {errorMessage && <LoginNotif message={errorMessage} />}
             </form>
         </div>
     )

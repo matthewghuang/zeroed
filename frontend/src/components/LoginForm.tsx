@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import api from "../api";
-import LoginNotif from './LoginNotif';
+import LoginNotif from './ErrorNotif';
 
 interface LoginFormProps {
     onSwitchToRegister: () => void;
@@ -67,7 +67,7 @@ function LoginForm({ onSwitchToRegister }: LoginFormProps) {
                 <p className="text-center">
                     Don't have an account? <button type="button" onClick={onSwitchToRegister} className="btn-link">Sign up</button>
                 </p>
-            {errorMessage && <LoginNotif message={errorMessage} />}
+                {errorMessage && <LoginNotif message={errorMessage} />}
             </form>
         </div>
     )

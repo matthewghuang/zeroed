@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import api from "../api";
-import LoginNotif from './LoginNotif';
+import LoginNotif from './ErrorNotif';
 
 interface RegisterFormProps {
     onSwitchToLogin: () => void;
@@ -61,29 +61,29 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                     ></input>
                 </div>
 
-            <div className="form-group">
-                <label htmlFor="password" className="form-label">Password:</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    className="form-control"
-                    value={password} 
-                    placeholder='password'
-                    onChange={(e) => setPassword(e.target.value)}
-                ></input>
-            </div>
-            <div className="text-center mt-3 mb-3">
-            <button type="submit" className="btn btn-secondary text-center">
-                Sign Up
-            </button>
-            </div>
-            <p className="text-center">
-                Already have an account? <button type="button" onClick={onSwitchToLogin} className="btn-link">Login</button>
-            </p>
-            {successMessage && <LoginNotif message={successMessage} type="success" />}
-            {errorMessage && <LoginNotif message={errorMessage} />}
-        </form>
-    </div>
+                <div className="form-group">
+                    <label htmlFor="password" className="form-label">Password:</label>
+                    <input
+                        type="password"
+                        id="password"
+                        className="form-control"
+                        value={password}
+                        placeholder='password'
+                        onChange={(e) => setPassword(e.target.value)}
+                    ></input>
+                </div>
+                <div className="text-center mt-3 mb-3">
+                    <button type="submit" className="btn btn-secondary text-center">
+                        Sign Up
+                    </button>
+                </div>
+                <p className="text-center">
+                    Already have an account? <button type="button" onClick={onSwitchToLogin} className="btn-link">Login</button>
+                </p>
+                {successMessage && <LoginNotif message={successMessage} type="success" />}
+                {errorMessage && <LoginNotif message={errorMessage} />}
+            </form>
+        </div>
     )
 }
 
