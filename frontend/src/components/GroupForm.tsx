@@ -9,9 +9,10 @@ interface Group {
 
 interface GroupFormProps {
     onSwitchToView: () => void;
+    onGroupCreated?: () => void;
 }
 
-function GroupForm({ onSwitchToView }: GroupFormProps) {
+function GroupForm({ onSwitchToView, onGroupCreated }: GroupFormProps) {
     const [groupName, setGroupName] = useState('')
 
     const [errorMessage, setErrorMessage] = useState('');
@@ -23,8 +24,12 @@ function GroupForm({ onSwitchToView }: GroupFormProps) {
         try {
             setErrorMessage('');
             await api.get('/api/auth/csrf');
-
             const response = await api.post('/api/groups', { name: groupName });
+
+            if (onGroupCreated) {
+                onGroupCreated();
+            }            
+            
             console.log('Group creation successful', response.data);
             setSuccessMessage("Group Creation Successful!");
             await new Promise(resolve => setTimeout(resolve, 2000));

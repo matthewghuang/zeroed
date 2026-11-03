@@ -16,27 +16,26 @@ function GroupPage() {
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
-    useEffect(() => {
-        const fetchGroups = async () => {
-            try {
-                const response = await api.get('/api/groups');
-                const userGroups: Group[] = response.data;
-                setGroups(userGroups);
-                
-                // user is in atleast 1 group
-                if (userGroups.length > 0) {
-                    setSelectedGroup(userGroups[0]); // first group visible
-                    setIsViewing(true);              // make the groups view active
-                } else {
-                    setIsViewing(false)              // make the create view active
-                }
-            } catch (error) {
-                console.error("Failed to fetch groups", error);
+    const fetchGroups = async () => {
+        try {
+            const response = await api.get('/api/groups');
+            const userGroups: Group[] = response.data;
+            setGroups(userGroups);
+            
+            // user is in atleast 1 group
+            if (userGroups.length > 0) {
+                setSelectedGroup(userGroups[0]); // first group visible
+                setIsViewing(true);              // make the groups view active
+            } else {
+                setIsViewing(false)              // make the create view active
             }
+        } catch (error) {
+            console.error("Failed to fetch groups", error);
         }
+    }
+    useEffect(() => {
         fetchGroups();
     }, []);
-
 
     return (
         <div className="d-flex flex-column vh-100 overflow-hidden" style={{
@@ -69,8 +68,7 @@ function GroupPage() {
                                             setIsViewing(true);
                                             
                                         }}
-                                        className={`${selectedGroup?.id === group.id ? 'active' : ''}`}
-                                    >
+                                        className={`list-group-item card border border-secondary text-white mb-3 shadow-lg p-4 ${selectedGroup?.id === group.id ? 'active' : ''}`} style={{ backgroundColor: selectedGroup?.id === group.id ? '#4a3a4d' : '#342835', width: "100%"}}>
                                         {group.name}
                                         </button>
                                 ))
@@ -90,9 +88,9 @@ function GroupPage() {
                 </div>
                 <main className="d-flex flex-grow-1 justify-content-center align-items-center p-4">
                     {isViewing ? (
-                        <GroupView onSwitchToView={() => setIsViewing(false)}/>
+                        <GroupView onSwitchToView={() => setIsViewing(false)} selectedGroup={selectedGroup}/>
                     ) : (
-                        <GroupForm onSwitchToView={() => setIsViewing(true)} />
+                        <GroupForm onSwitchToView={() => setIsViewing(true)} onGroupCreated={fetchGroups}/>
                     )}
                 </main>                   
             </div>
