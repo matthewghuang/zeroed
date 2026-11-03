@@ -159,4 +159,31 @@ class GroupServiceTest {
         verify(groupRepository).findAll();
         verifyNoInteractions(groupMembershipRepository);
     }
+
+    @Test
+    void getGroupMembersForAdminReturnsMembersWithoutCallerMembership() {
+        when(admin.getRole()).thenReturn(UserRole.ADMIN);
+        when(groupRepository.existsById(7L)).thenReturn(true);
+        List<User> members = List.of(currentUser, targetUser);
+        when(groupMembershipRepository.findMembersByGroupId(7L)).thenReturn(members);
+        GroupService service = new GroupService(groupRepository, groupMembershipRepository, userRepository);
+
+        assertEquals(members, service.getGroupMembers(7L, admin));
+
+        verify(groupMembershipRepository, never()).existsById(any());
+        verify(groupMembershipRepository).findMembersByGroupId(7L);
+    }
+
+    @Test
+    void getGroupMembersForAdminRejectsMissingGroup() {
+        when(admin.getRole()).thenReturn(UserRole.ADMIN);
+        when(groupRepository.existsById(999L)).thenReturn(false);
+        GroupService service = new GroupService(groupRepository, groupMembershipRepository, userRepository);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.getGroupMembers(999L, admin));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        verifyNoInteractions(groupMembershipRepository);
+    }
 }

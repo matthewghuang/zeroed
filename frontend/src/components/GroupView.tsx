@@ -13,24 +13,29 @@ interface GroupViewProps {
 }
 
 
-function GroupView({ onSwitchToView, selectedGroup }: GroupViewProps) {
+function GroupView({ selectedGroup }: GroupViewProps) {
     const [members, setMembers] = useState<Member[]>([]);
     const [email, setEmail] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [membersError, setMembersError] = useState('');
     
     const fetchMembers = async () => {
         if (!selectedGroup) return;
 
         try {
+            setMembersError('');
             const response = await api.get(`/api/groups/${selectedGroup.id}/members`);
             setMembers(response.data);
         } catch (error) {
+            setMembers([]);
+            setMembersError('Unable to load group members. Please try again.');
             console.error("Failed to fetch group members", error);
         }
     };
 
     useEffect(() => {
+        setMembers([]);
         fetchMembers();
     }, [selectedGroup]);
 
@@ -38,6 +43,7 @@ function GroupView({ onSwitchToView, selectedGroup }: GroupViewProps) {
 
     const handleForm = async (e: any) => {
         e.preventDefault();
+        if (!selectedGroup) return;
 
         try {
             setErrorMessage('');
@@ -75,6 +81,7 @@ function GroupView({ onSwitchToView, selectedGroup }: GroupViewProps) {
 
             {/* Member List */}
             <h4 className="border-bottom pb-2">Members</h4>
+            {membersError && <ErrorNotif message={membersError} />}
             <ul className="list-group list-group-flush bg-transparent">
                 {members.map((member) => (
                     <li key={member.id} className="list-group-item bg-transparent text-white border-secondary">
