@@ -1,8 +1,10 @@
 package com.zeroed.app.models;
 
+import java.io.Serializable;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,22 +14,36 @@ import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 
-@Entity
-@Table(name = "group_memberships")
-// many-to-many relationship between User and Group
-// stores each user's membership in a group, with some additional information. eg. when they joined the group
-public class GroupMembership {
+@Embeddable
+class GroupMembershipId implements Serializable {
+    @Column(name = "user_id")
+    private Long userId;
 
-    @EmbeddedId
+    @Column(name = "group_id")
+    private Long groupId;
+
+    protected GroupMembershipId() {}
+
+    public GroupMembershipId(Long userId, Long groupId) {
+        this.userId = userId;
+        this.groupId = groupId;
+    }
+}
+
+@Entity 
+@Table(name = "group_memberships")
+public class GroupMembership {
+	
+	@EmbeddedId
     private GroupMembershipId id;
 
-    @NotNull
+	@NotNull 
     @MapsId("userId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @NotNull
+	@NotNull 
     @MapsId("groupId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "group_id", nullable = false)
