@@ -27,6 +27,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.zeroed.app.dto.CreateGroupRequest;
 import com.zeroed.app.dto.GroupResponse;
+import com.zeroed.app.dto.GroupMemberResponse;
 import com.zeroed.app.models.Group;
 import com.zeroed.app.models.User;
 import com.zeroed.app.repositories.UserRepository;
@@ -142,6 +143,42 @@ class GroupControllerTest {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
         var response = controller.getGroups(authentication());
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNull(response.getBody());
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
+    void getGroupMembersReturnsSafeMemberResponses() {
+        User user = signedInUser();
+        User member = mock(User.class);
+        when(member.getId()).thenReturn(57L);
+        when(member.getEmail()).thenReturn("sam@example.com");
+        when(groupService.getGroupMembers(7L, user)).thenReturn(List.of(member));
+
+        var response = controller.getGroupMembers(7L, authentication());
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(List.of(new GroupMemberResponse(57L, "sam@example.com")), response.getBody());
+        verify(groupService).getGroupMembers(7L, user);
+    }
+
+    @ParameterizedTest
+    @MethodSource("unauthorizedAuthentications")
+    void getGroupMembersRejectsUnauthorizedAuthentication(Authentication authentication) {
+        var response = controller.getGroupMembers(7L, authentication);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNull(response.getBody());
+        verifyNoInteractions(userRepository, groupService);
+    }
+
+    @Test
+    void getGroupMembersRejectsSessionWhoseUserNoLongerExists() {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
+
+        var response = controller.getGroupMembers(7L, authentication());
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertNull(response.getBody());

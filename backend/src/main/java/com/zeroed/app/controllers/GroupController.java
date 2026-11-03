@@ -8,12 +8,14 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.zeroed.app.dto.CreateGroupRequest;
 import com.zeroed.app.dto.GroupResponse;
+import com.zeroed.app.dto.GroupMemberResponse;
 import com.zeroed.app.models.Group;
 import com.zeroed.app.models.User;
 import com.zeroed.app.repositories.UserRepository;
@@ -49,6 +51,26 @@ public class GroupController {
                 .map(group -> new GroupResponse(group.getId(), group.getName(), group.getCreatedAt()))
                 .toList();
         return ResponseEntity.ok(groups);
+    }
+
+    @GetMapping("/{groupId}/members")
+    public ResponseEntity<List<GroupMemberResponse>> getGroupMembers(@PathVariable Long groupId,
+                                                                    Authentication authentication) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User currentUser = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<GroupMemberResponse> members = groupService.getGroupMembers(groupId, currentUser).stream()
+                .map(user -> new GroupMemberResponse(user.getId(), user.getEmail()))
+                .toList();
+        return ResponseEntity.ok(members);
     }
 
     @PostMapping

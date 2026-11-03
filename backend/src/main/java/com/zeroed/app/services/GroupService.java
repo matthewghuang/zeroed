@@ -3,10 +3,13 @@ package com.zeroed.app.services;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.zeroed.app.models.Group;
 import com.zeroed.app.models.GroupMembership;
+import com.zeroed.app.models.GroupMembershipId;
 import com.zeroed.app.models.User;
 import com.zeroed.app.models.UserRole;
 import com.zeroed.app.repositories.GroupMembershipRepository;
@@ -44,5 +47,13 @@ public class GroupService {
             return groupRepository.findAll();
         }
         return groupMembershipRepository.findGroupsByUserId(user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> getGroupMembers(Long groupId, User user) {
+        if (!groupMembershipRepository.existsById(new GroupMembershipId(user.getId(), groupId))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
+        }
+        return groupMembershipRepository.findMembersByGroupId(groupId);
     }
 }
