@@ -46,22 +46,6 @@ function GroupPage({ currentUser, onUserLoaded }: GroupPageProps) {
     fetchGroups();
   }, []);
 
-  useEffect(() => {
-    if (currentUser) return;
-
-    let cancelled = false;
-    api
-      .get<CurrentUser>("/api/auth/me")
-      .then((response) => {
-        if (!cancelled) onUserLoaded(response.data);
-      })
-      .catch((error) => console.error("Failed to fetch current user", error));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser, onUserLoaded]);
-
   const signOut = async () => {
     try {
       await api.get("/api/auth/csrf");
