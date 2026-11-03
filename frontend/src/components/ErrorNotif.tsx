@@ -1,9 +1,9 @@
 interface LoginNotifProps {
     message: string;
-    type?: 'error' | 'success'; // New prop to switch styling/headers
+    type?: 'error' | 'success';
 }
 
-function LoginNotif({ message, type = 'error' }: LoginNotifProps) {
+function ErrorNotif({ message, type = 'error' }: LoginNotifProps) {
     const isSuccess = type === 'success';
 
     return (
@@ -16,4 +16,4 @@ function LoginNotif({ message, type = 'error' }: LoginNotifProps) {
     )
 }
 
-export default LoginNotif
+export default ErrorNotif
