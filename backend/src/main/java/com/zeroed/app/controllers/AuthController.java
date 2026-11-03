@@ -13,6 +13,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,11 +38,13 @@ public class AuthController {
 	private final AuthService authService;
 	private final AuthenticationManager authenticationManager;
 	private final SecurityContextRepository securityContextRepository;
+	private final SecurityContextLogoutHandler logoutHandler;
 
 	public AuthController(AuthService authService, AuthenticationManager authenticationManager) {
 		this.authService = authService;
 		this.authenticationManager = authenticationManager;
 		this.securityContextRepository = new HttpSessionSecurityContextRepository();
+		this.logoutHandler = new SecurityContextLogoutHandler();
 	}
 
 	@PostMapping("/register")
@@ -78,6 +81,13 @@ public class AuthController {
 
 		securityContextRepository.saveContext(context, servletRequest, servletResponse);
 
+		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping("/logout")
+	public ResponseEntity<Void> logout(Authentication authentication,
+			HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
+		logoutHandler.logout(servletRequest, servletResponse, authentication);
 		return ResponseEntity.noContent().build();
 	}
 	
