@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import GroupForm from "../components/GroupForm";
 import MainHeader from '../components/MainHeader';
@@ -15,6 +16,8 @@ function GroupPage() {
     const [isViewing, setIsViewing] = useState(true);
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+
+    const navigate = useNavigate();
 
     const fetchGroups = async () => {
         try {
@@ -37,6 +40,16 @@ function GroupPage() {
         fetchGroups();
     }, []);
 
+    const signOut = async () => {
+        try {
+            await api.get('/api/auth/csrf');
+            await api.post('/api/auth/logout');
+            navigate("/login")
+        } catch (error: any) {
+            console.error('Failed to logout', error);
+        }
+    }
+
     return (
         <div className="d-flex flex-column vh-100 overflow-hidden" style={{
                 backgroundImage: `url(${bgImage})`,
@@ -50,7 +63,7 @@ function GroupPage() {
             <div className='d-flex flex-grow-1 overflow-hidden'>
                 <div className="d-flex flex-column align-items-stretch flex-shrink-0 border-end border-black h-100" style={{ width: "200px", backgroundColor: '#211824' }}>
                     {/* Header */}
-                    <a href="/" className="d-flex align-items-center flex-shrink-0 p-3 link-body-emphasis text-decoration-none border-bottom border-black" style={{ backgroundColor: '#342835' }}>
+                    <a className="d-flex align-items-center flex-shrink-0 p-3 link-body-emphasis text-decoration-none border-bottom border-black" style={{ backgroundColor: '#342835' }}>
                         <span className="fs-5 fw-semibold text-white">Groups</span>
                     </a>
                     {/* Scrollable Group List */}
@@ -84,7 +97,11 @@ function GroupPage() {
                         ) : null}
                     </div>
                     {/* Bottom Bumper */}
-                    <div className="p-3 border-top border-black" style={{ backgroundColor: '#342835', height: '50px' }}></div>
+                    <div className="p-3 border-top border-black" style={{ backgroundColor: '#342835', height: '50px' }}>
+                        <button type="button" onClick={signOut} className="btn-link">
+                            Logout
+                        </button>
+                    </div>
                 </div>
                 <main className="d-flex flex-grow-1 justify-content-center align-items-center p-4">
                     {isViewing ? (
