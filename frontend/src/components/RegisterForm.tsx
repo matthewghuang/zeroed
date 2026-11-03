@@ -14,7 +14,7 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
 
-    const handleForm = async (e) => {
+    const handleForm = async (e: any) => {
         e.preventDefault();
 
         try {
@@ -26,7 +26,7 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
             setSuccessMessage("Registration Successful!");
             await new Promise(resolve => setTimeout(resolve, 2000));
             onSwitchToLogin();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Authentication failed', error);
             const msg = error.response?.data?.message || "Registration failed. Check your email and password."
             setErrorMessage(msg);

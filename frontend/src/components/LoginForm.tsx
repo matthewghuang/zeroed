@@ -15,7 +15,7 @@ function LoginForm({ onSwitchToRegister }: LoginFormProps) {
 
     const navigate = useNavigate();
 
-    const handleForm = async (e) => {
+    const handleForm = async (e: any) => {
         e.preventDefault();
 
         try {
@@ -25,7 +25,7 @@ function LoginForm({ onSwitchToRegister }: LoginFormProps) {
             const response = await api.post('/api/auth/login', { email, password });
             console.log('Authentication successful', response.data);
             navigate("/groups")
-        } catch (error) {
+        } catch (error: any) {
             console.error('Authentication failed', error);
             const msg = error.response?.data?.message || "Login failed. Check your email and password."
             setErrorMessage(msg);

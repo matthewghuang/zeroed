@@ -1,7 +1,13 @@
+import { useState } from 'react';
+import GroupForm from "../components/GroupForm";
 import MainHeader from '../components/MainHeader';
 import bgImage from '../assets/zeroedBG.png';
+import GroupView from '../components/GroupView';
+
 
 function GroupPage() {
+    const [isViewing, setIsViewing] = useState(false);
+
     return (
         <div className="d-flex flex-column vh-100 overflow-hidden" style={{
                 backgroundImage: `url(${bgImage})`,
@@ -31,7 +37,7 @@ function GroupPage() {
                         </div>
                         {/* Create Button */}
                         <div className="text-center">
-                            <button type="submit" className="btn btn-secondary text-center">
+                            <button type="button" onClick={() => setIsViewing(false)} className="btn-link">
                                 Create Group
                             </button>
                         </div>
@@ -39,11 +45,14 @@ function GroupPage() {
                     {/* Bottom Bumper */}
                     <div className="p-3 border-top border-black" style={{ backgroundColor: '#342835', height: '50px' }}></div>
                 </div>
-            </div>
-
-            {/* Main Content */}
-            <div>
-                
+                    {/* Main Content */}
+                    <main className="d-flex flex-grow-1 justify-content-center align-items-center p-4">
+                        {isViewing ? (
+                            <GroupView onSwitchToView={() => setIsViewing(false)}/>
+                        ) : (
+                            <GroupForm onSwitchToView={() => setIsViewing(true)} />
+                        )}
+                </main>
             </div>
         </div>
     )
