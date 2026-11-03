@@ -2,6 +2,11 @@ import { useState } from 'react';
 import api from "../api";
 import LoginNotif from './ErrorNotif';
 
+interface Group {
+    id: number;
+    name: string;
+}
+
 interface GroupFormProps {
     onSwitchToView: () => void;
 }

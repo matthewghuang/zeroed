@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
-import GroupPage from './pages/GroupPage';
+import LoginPage from './Pages/LoginPage';
+import GroupPage from './Pages/GroupPage';
 
 function App() {
 
