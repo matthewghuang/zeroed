@@ -10,12 +10,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
+
+enum UserRole {
+    REGULAR,
+    ADMIN
+}
 
 @Entity
 @Table(
@@ -30,7 +34,6 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-	@Email
 	@NotBlank
 	@Size(max = 254)
     @Column(name = "email", nullable = false, length = 254)
