@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.zeroed.app.dto.CreateGroupRequest;
+import com.zeroed.app.dto.AddGroupMemberRequest;
 import com.zeroed.app.dto.GroupResponse;
 import com.zeroed.app.dto.GroupMemberResponse;
 import com.zeroed.app.models.Group;
@@ -71,6 +72,25 @@ public class GroupController {
                 .map(user -> new GroupMemberResponse(user.getId(), user.getEmail()))
                 .toList();
         return ResponseEntity.ok(members);
+    }
+
+    @PostMapping("/{groupId}/members")
+    public ResponseEntity<GroupMemberResponse> addGroupMember(@PathVariable Long groupId,
+            @Valid @RequestBody AddGroupMemberRequest request, Authentication authentication) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User currentUser = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User member = groupService.addGroupMember(groupId, request.email(), currentUser);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new GroupMemberResponse(member.getId(), member.getEmail()));
     }
 
     @PostMapping

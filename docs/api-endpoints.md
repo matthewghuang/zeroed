@@ -124,6 +124,8 @@ Do not include password hashes or authentication/session data.
 
 Add an already-registered user to the group.
 
+The caller must already be a member, including admins. The server derives the caller from the session and normalizes the target email by trimming whitespace and converting it to lowercase.
+
 Proposed request by email (a user ID could be used instead if the UI first selects from a member directory):
 
 ```json
@@ -134,7 +136,8 @@ Proposed request by email (a user ID could be used instead if the UI first selec
 
 Suggested behavior and responses:
 
-- `201 Created` when membership is added.
+- `201 Created` with `{ "id": 57, "email": "sam@example.com" }` when membership is added.
+- `401 Unauthorized` when not signed in.
 - `400 Bad Request` for malformed input.
 - `404 Not Found` if the group or target account is not found/visible.
 - `409 Conflict` if the person is already a member.

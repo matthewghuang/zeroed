@@ -1,6 +1,7 @@
 package com.zeroed.app.services;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
@@ -14,16 +15,20 @@ import com.zeroed.app.models.User;
 import com.zeroed.app.models.UserRole;
 import com.zeroed.app.repositories.GroupMembershipRepository;
 import com.zeroed.app.repositories.GroupRepository;
+import com.zeroed.app.repositories.UserRepository;
 
 @Service
 public class GroupService {
     private final GroupRepository groupRepository;
     private final GroupMembershipRepository groupMembershipRepository;
+    private final UserRepository userRepository;
 
     public GroupService(GroupRepository groupRepository,
-                        GroupMembershipRepository groupMembershipRepository) {
+                        GroupMembershipRepository groupMembershipRepository,
+                        UserRepository userRepository) {
         this.groupRepository = groupRepository;
         this.groupMembershipRepository = groupMembershipRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -55,5 +60,24 @@ public class GroupService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
         }
         return groupMembershipRepository.findMembersByGroupId(groupId);
+    }
+
+    @Transactional
+    public User addGroupMember(Long groupId, String email, User currentUser) {
+        if (!groupMembershipRepository.existsById(new GroupMembershipId(currentUser.getId(), groupId))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
+        }
+
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+        User member = userRepository.findByEmail(email.trim().toLowerCase(Locale.ROOT))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (groupMembershipRepository.existsById(new GroupMembershipId(member.getId(), groupId))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User is already a group member");
+        }
+
+        groupMembershipRepository.save(new GroupMembership(member, group));
+        return member;
     }
 }

@@ -6,6 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,12 +22,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.zeroed.app.dto.CreateGroupRequest;
+import com.zeroed.app.dto.AddGroupMemberRequest;
 import com.zeroed.app.dto.GroupResponse;
 import com.zeroed.app.dto.GroupMemberResponse;
 import com.zeroed.app.models.Group;
@@ -183,6 +189,55 @@ class GroupControllerTest {
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertNull(response.getBody());
         verifyNoInteractions(groupService);
+    }
+
+    @Test
+    void addGroupMemberReturnsCreatedMemberResponse() {
+        User user = signedInUser();
+        User member = mock(User.class);
+        when(member.getId()).thenReturn(57L);
+        when(member.getEmail()).thenReturn("sam@example.com");
+        when(groupService.addGroupMember(7L, "sam@example.com", user)).thenReturn(member);
+
+        var response = controller.addGroupMember(7L, new AddGroupMemberRequest("sam@example.com"), authentication());
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(new GroupMemberResponse(57L, "sam@example.com"), response.getBody());
+        verify(groupService).addGroupMember(7L, "sam@example.com", user);
+    }
+
+    @ParameterizedTest
+    @MethodSource("unauthorizedAuthentications")
+    void addGroupMemberRejectsUnauthorizedAuthentication(Authentication authentication) {
+        var response = controller.addGroupMember(7L, new AddGroupMemberRequest("sam@example.com"), authentication);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNull(response.getBody());
+        verifyNoInteractions(userRepository, groupService);
+    }
+
+    @Test
+    void addGroupMemberRejectsSessionWhoseUserNoLongerExists() {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
+
+        var response = controller.addGroupMember(7L, new AddGroupMemberRequest("sam@example.com"), authentication());
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNull(response.getBody());
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
+    void addGroupMemberRejectsInvalidEmailOverHttp() throws Exception {
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        mvc.perform(post("/api/groups/7/members")
+                        .principal(authentication())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"invalid-email\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userRepository, groupService);
     }
 
     private User signedInUser() {
