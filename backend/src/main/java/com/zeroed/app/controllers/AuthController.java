@@ -5,6 +5,7 @@ import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.Authentication;
@@ -17,7 +18,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.zeroed.app.dto.LoginRequest;
+import com.zeroed.app.dto.MeResponse;
 import com.zeroed.app.dto.RegisterRequest;
+import com.zeroed.app.models.User;
 import com.zeroed.app.services.AuthService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -84,7 +87,14 @@ public class AuthController {
 	}
 
 	@GetMapping("/me")
-	public ResponseEntity<String> me(Authentication authentication) {
-		return ResponseEntity.ok(authentication.getName());
+	public ResponseEntity<MeResponse> me(Authentication authentication) {
+		if (authentication == null
+				|| !authentication.isAuthenticated()
+				|| authentication instanceof AnonymousAuthenticationToken) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
+
+		User user = authService.getCurrentUser(authentication.getName());
+		return ResponseEntity.ok(new MeResponse(user.getEmail(), user.getRole()));
 	}
 }

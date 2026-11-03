@@ -65,6 +65,18 @@ Suggested responses:
 - `204 No Content` when logout succeeds.
 - `401 Unauthorized` if the API requires an active session for logout; alternatively, make logout idempotent and return `204` even when already logged out. Choose one behavior and document it.
 
+### `GET /api/auth/me`
+
+Return the signed-in user's email and current role from the database.
+
+Response: `200 OK` with JSON, replacing the previous plain email response:
+
+```json
+{ "email": "alex@example.com", "role": "REGULAR" }
+```
+
+The role is `REGULAR` or `ADMIN`. Return `401 Unauthorized` when not signed in or the user no longer exists.
+
 ## Groups
 
 ### `GET /api/groups`

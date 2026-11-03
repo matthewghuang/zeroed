@@ -32,4 +32,9 @@ public class AuthService {
 		User user = new User(normalizedEmail, hash);
 		userRepository.save(user);
 	}
+
+	public User getCurrentUser(String email) {
+		return userRepository.findByEmail(email)
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+	}
 }
