@@ -1,0 +1,105 @@
+import { useState, useEffect } from 'react';
+import GroupForm from "../components/GroupForm";
+import MainHeader from '../components/MainHeader';
+import bgImage from '../assets/zeroedBG.png';
+import GroupView from '../components/GroupView';
+import api from "../api";
+
+// properties for each group in group list view
+interface Group {
+    id: number;
+    name: string;
+}
+
+function GroupPage() {
+    const [isViewing, setIsViewing] = useState(true);
+    const [groups, setGroups] = useState<Group[]>([]);
+    const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+
+    useEffect(() => {
+        const fetchGroups = async () => {
+            try {
+                const response = await api.get('/api/groups');
+                const userGroups: Group[] = response.data;
+                setGroups(userGroups);
+                
+                // user is in atleast 1 group
+                if (userGroups.length > 0) {
+                    setSelectedGroup(userGroups[0]); // first group visible
+                    setIsViewing(true);              // make the groups view active
+                } else {
+                    setIsViewing(false)              // make the create view active
+                }
+            } catch (error) {
+                console.error("Failed to fetch groups", error);
+            }
+        }
+        fetchGroups();
+    }, []);
+
+
+    return (
+        <div className="d-flex flex-column vh-100 overflow-hidden" style={{
+                backgroundImage: `url(${bgImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat'
+            }}>
+            <MainHeader />
+
+            {/* Sidebar */}
+            <div className='d-flex flex-grow-1 overflow-hidden'>
+                <div className="d-flex flex-column align-items-stretch flex-shrink-0 border-end border-black h-100" style={{ width: "200px", backgroundColor: '#211824' }}>
+                    {/* Header */}
+                    <a href="/" className="d-flex align-items-center flex-shrink-0 p-3 link-body-emphasis text-decoration-none border-bottom border-black" style={{ backgroundColor: '#342835' }}>
+                        <span className="fs-5 fw-semibold text-white">Groups</span>
+                    </a>
+                    {/* Scrollable Group List */}
+                    <div className="list-group list-group-flush border-bottom border-black scrollarea flex-grow-1" style={{ overflowY: 'auto' }}>
+                        {/* Items */}
+                        <div className="text-center p-4 text-muted" style={{ fontSize: '0.85rem' }}>
+                            {groups.length === 0 ? (
+                                <div>No groups yet</div>
+                            ) : (
+                                groups.map((group) => (
+                                    <button
+                                        key={group.id}
+                                        onClick={() => {
+                                            setSelectedGroup(group);
+                                            setIsViewing(true);
+                                            
+                                        }}
+                                        className={`${selectedGroup?.id === group.id ? 'active' : ''}`}
+                                    >
+                                        {group.name}
+                                        </button>
+                                ))
+                            )}
+                        </div>
+                        {/* Create Button (dissappears when making group) */}
+                        {isViewing ? (
+                            <div className="text-center">
+                                <button type="button" onClick={() => setIsViewing(false)} className="btn-link">
+                                    Create Group
+                                </button>
+                            </div>
+                        ) : null}
+                    </div>
+                    {/* Bottom Bumper */}
+                    <div className="p-3 border-top border-black" style={{ backgroundColor: '#342835', height: '50px' }}></div>
+                </div>
+                <main className="d-flex flex-grow-1 justify-content-center align-items-center p-4">
+                    {isViewing ? (
+                        <GroupView onSwitchToView={() => setIsViewing(false)}/>
+                    ) : (
+                        <GroupForm onSwitchToView={() => setIsViewing(true)} />
+                    )}
+                </main>                   
+            </div>
+            {/* Main Content */}
+         
+        </div>
+    )
+}
+
+export default GroupPage
