@@ -1,13 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import api from "../api";
+import type { CurrentUser } from '../api';
 import LoginNotif from './ErrorNotif';
 
 interface LoginFormProps {
     onSwitchToRegister: () => void;
+    onLogin: (user: CurrentUser) => void;
 }
 
-function LoginForm({ onSwitchToRegister }: LoginFormProps) {
+function LoginForm({ onSwitchToRegister, onLogin }: LoginFormProps) {
     // arguments
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -22,8 +24,9 @@ function LoginForm({ onSwitchToRegister }: LoginFormProps) {
             setErrorMessage('');
             await api.get('/api/auth/csrf');
 
-            const response = await api.post('/api/auth/login', { email, password });
-            console.log('Authentication successful', response.data);
+            await api.post('/api/auth/login', { email, password });
+            const response = await api.get<CurrentUser>('/api/auth/me');
+            onLogin(response.data);
             navigate("/groups")
         } catch (error: any) {
             console.error('Authentication failed', error);

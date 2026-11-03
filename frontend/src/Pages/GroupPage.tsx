@@ -4,6 +4,7 @@ import MainHeader from '../components/MainHeader';
 import bgImage from '../assets/zeroedBG.png';
 import GroupView from '../components/GroupView';
 import api from "../api";
+import type { CurrentUser } from '../api';
 
 // properties for each group in group list view
 interface Group {
@@ -11,7 +12,12 @@ interface Group {
     name: string;
 }
 
-function GroupPage() {
+interface GroupPageProps {
+    currentUser: CurrentUser | null;
+    onUserLoaded: (user: CurrentUser) => void;
+}
+
+function GroupPage({ currentUser, onUserLoaded }: GroupPageProps) {
     const [isViewing, setIsViewing] = useState(true);
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
@@ -37,9 +43,24 @@ function GroupPage() {
         fetchGroups();
     }, []);
 
+    useEffect(() => {
+        if (currentUser) return;
+
+        let cancelled = false;
+        api.get<CurrentUser>('/api/auth/me')
+            .then(response => {
+                if (!cancelled) onUserLoaded(response.data);
+            })
+            .catch(error => console.error('Failed to fetch current user', error));
+
+        return () => { cancelled = true; };
+    }, [currentUser, onUserLoaded]);
+
     return (
         <div className="d-flex flex-column vh-100 overflow-hidden" style={{
-                backgroundImage: `url(${bgImage})`,
+                backgroundImage: currentUser?.role === 'ADMIN'
+                    ? 'radial-gradient(circle at center, #210b10 0%, #6b1728 50%, #b83742 100%)'
+                    : `url(${bgImage})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat'

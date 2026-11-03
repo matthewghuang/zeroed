@@ -3,8 +3,13 @@ import LoginHeader from '../components/LoginHeader';
 import LoginForm from '../components/LoginForm';
 import RegisterForm from '../components/RegisterForm';
 import bgImage from '../assets/zeroedBG.png';
+import type { CurrentUser } from '../api';
 
-function LoginPage() {
+interface LoginPageProps {
+    onLogin: (user: CurrentUser) => void;
+}
+
+function LoginPage({ onLogin }: LoginPageProps) {
     const [isRegistering, setIsRegistering] = useState(false);
 
     return (
@@ -24,7 +29,7 @@ function LoginPage() {
                             {isRegistering ? (
                                 <RegisterForm onSwitchToLogin={() => setIsRegistering(false)} />
                             ) : (
-                                <LoginForm onSwitchToRegister={() => setIsRegistering(true)} />
+                                <LoginForm onSwitchToRegister={() => setIsRegistering(true)} onLogin={onLogin} />
                             )}
                         </main>
                     </div>
