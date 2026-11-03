@@ -16,28 +16,26 @@ function GroupPage() {
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
-
-        const fetchGroups = async () => {
-            try {
-                const response = await api.get('/api/groups');
-                const userGroups: Group[] = response.data;
-                setGroups(userGroups);
-                
-                // user is in atleast 1 group
-                if (userGroups.length > 0) {
-                    setSelectedGroup(userGroups[0]); // first group visible
-                    setIsViewing(true);              // make the groups view active
-                } else {
-                    setIsViewing(false)              // make the create view active
-                }
-            } catch (error) {
-                console.error("Failed to fetch groups", error);
+    const fetchGroups = async () => {
+        try {
+            const response = await api.get('/api/groups');
+            const userGroups: Group[] = response.data;
+            setGroups(userGroups);
+            
+            // user is in atleast 1 group
+            if (userGroups.length > 0) {
+                setSelectedGroup(userGroups[0]); // first group visible
+                setIsViewing(true);              // make the groups view active
+            } else {
+                setIsViewing(false)              // make the create view active
             }
+        } catch (error) {
+            console.error("Failed to fetch groups", error);
         }
-        useEffect(() => {
-            fetchGroups();
+    }
+    useEffect(() => {
+        fetchGroups();
     }, []);
-
 
     return (
         <div className="d-flex flex-column vh-100 overflow-hidden" style={{
@@ -70,7 +68,7 @@ function GroupPage() {
                                             setIsViewing(true);
                                             
                                         }}
-                                        className={`${selectedGroup?.id === group.id ? 'active' : ''}`}
+                                        className={`list-group-item ${selectedGroup?.id === group.id ? 'active' : ''}`}
                                     >
                                         {group.name}
                                         </button>
