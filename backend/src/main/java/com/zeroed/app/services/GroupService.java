@@ -57,7 +57,10 @@ public class GroupService {
 
     @Transactional(readOnly = true)
     public List<User> getGroupMembers(Long groupId, User user) {
-        if (!groupMembershipRepository.existsById(new GroupMembershipId(user.getId(), groupId))) {
+        boolean canView = user.getRole() == UserRole.ADMIN
+                ? groupRepository.existsById(groupId)
+                : groupMembershipRepository.existsById(new GroupMembershipId(user.getId(), groupId));
+        if (!canView) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
         }
         return groupMembershipRepository.findMembersByGroupId(groupId);
