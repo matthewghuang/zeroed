@@ -2,8 +2,10 @@ package com.zeroed.app.services;
 
 import java.util.Locale;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.zeroed.app.models.User;
 import com.zeroed.app.repositories.UserRepository;
@@ -22,7 +24,7 @@ public class AuthService {
 		String normalizedEmail = _email.trim().toLowerCase(Locale.ROOT);
 
 		if (userRepository.existsByEmail(normalizedEmail)) {
-			throw new IllegalArgumentException("Email already registered");
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
 		}
 
 		String hash = passwordEncoder.encode(rawPassword);

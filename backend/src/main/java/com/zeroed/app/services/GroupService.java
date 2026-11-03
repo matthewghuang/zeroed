@@ -5,6 +5,7 @@ import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +35,7 @@ public class GroupService {
     @Transactional
     public Group createGroup(String name, User creator) {
         if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("A group name is required, please enter a group name.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A group name is required, please enter a group name.");
         }
 
         // save a new group
