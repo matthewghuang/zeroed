@@ -3,12 +3,18 @@ import api from "../api";
 import LoginNotif from "./ErrorNotif";
 
 interface ExpenseFormProps {
+  groupId: number;
   onSwitchToView: () => void;
   onExpenseCreated?: () => void;
 }
 
-function ExpenseForm({ onSwitchToView, onExpenseCreated }: ExpenseFormProps) {
-  const 
+function ExpenseForm({ groupId, onSwitchToView, onExpenseCreated }: ExpenseFormProps) {
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("CAD");
+  const [date, setDate] = useState("");
+  const [paidByUserId, setPaidByUserId] = useState<number | "">("");
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
 
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -19,19 +25,26 @@ function ExpenseForm({ onSwitchToView, onExpenseCreated }: ExpenseFormProps) {
     try {
       setErrorMessage("");
       await api.get("/api/auth/csrf");
-      const response = await api.post("/api/groups", { name: groupName });
+      const response = await api.post(`/api/groups/${groupId}/expenses`, { 
+        description,
+        amount: amount ? Number(amount).toFixed(2) : "", // 2 decimals
+        currency,
+        ...(date && {date}),
+        ...(paidByUserId !== "" && {paidByUserId}),
+        participantIds
+      });
 
-      if (onGroupCreated) {
-        onGroupCreated();
+      if (onExpenseCreated) {
+        onExpenseCreated();
       }
 
-      console.log("Group creation successful", response.data);
-      setSuccessMessage("Group Creation Successful!");
+      console.log("Expense added successfully", response.data);
+      setSuccessMessage("Expense added successfully");
       await new Promise((resolve) => setTimeout(resolve, 2000));
       onSwitchToView();
     } catch (error: any) {
-      console.error("Group creation failed", error);
-      const msg = "Group creation failed. Empty box.";
+      console.error("Expense creation failed", error);
+      const msg = "Expense creation failed.";
       setErrorMessage(msg);
     }
   };
@@ -43,21 +56,57 @@ function ExpenseForm({ onSwitchToView, onExpenseCreated }: ExpenseFormProps) {
     >
       <form onSubmit={handleForm}>
         <div className="form-group">
-          <label htmlFor="text" className="form-label">
-            Group Name:
+          <label htmlFor="description" className="form-label">
+            Description:
           </label>
           <input
             type="text"
             id="text"
             className="form-control"
-            value={groupName}
-            placeholder="text"
-            onChange={(e) => setGroupName(e.target.value)}
+            value={description}
+            placeholder="description..."
+            onChange={(e) => setDescription(e.target.value)}
           ></input>
+          <label htmlFor="amount" className="form-label">
+            amount:
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            id="text"
+            className="form-control"
+            value={amount}
+            placeholder="0.00"
+            onChange={(e) => setAmount(e.target.value)}
+          ></input>
+          <label htmlFor="currency" className="form-label">
+            currency:
+          </label>
+          <select 
+            id="currency"
+            className="form-select"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            >
+              <option value="CAD">CAD</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
         </div>
+          <label htmlFor="date" className="form-label">
+            date:
+          </label>
+          <input 
+            type="date"
+            id="date"
+            className="form-control"
+            value={date}
+            placeholder="description..."
+            onChange={(e) => setDate(e.target.value)}
+          />
         <div className="text-center mt-3 mb-3">
           <button type="submit" className="btn btn-secondary text-center">
-            Create Group
+            Create Expense
           </button>
         </div>
         {successMessage && (
@@ -69,4 +118,4 @@ function ExpenseForm({ onSwitchToView, onExpenseCreated }: ExpenseFormProps) {
   );
 }
 
-export default GroupForm;
+export default ExpenseForm;
