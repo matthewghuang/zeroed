@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -66,5 +67,13 @@ public class ExpenseService {
             expense.addSplit(members.get(request.participantIds().get(index)), share + (index < remainder ? 1 : 0));
         }
         return ExpenseResponse.from(expenses.saveAndFlush(expense));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExpenseResponse> listExpenses(Long groupId, User requester) {
+        if (!memberships.existsById(new GroupMembershipId(requester.getId(), groupId))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
+        }
+        return List.of();
     }
 }
