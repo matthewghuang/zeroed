@@ -25,6 +25,10 @@ import com.zeroed.app.repositories.GroupRepository;
 
 @Service
 public class ExpenseService {
+    private static final Sort NEWEST_FIRST = Sort.by(
+          Sort.Order.desc("date"),
+          Sort.Order.desc("createdAt"),
+          Sort.Order.desc("id"));
     private final ExpenseRepository expenses;
     private final GroupRepository groups;
     private final GroupMembershipRepository memberships;
@@ -38,7 +42,7 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseResponse createExpense(Long groupId, CreateExpenseRequest request, User creator) {
-        // Unlike member listing, expense creation gives admins no membership bypass.
+        // unlike member listing, expense creation gives admins no membership bypass
         if (!memberships.existsById(new GroupMembershipId(creator.getId(), groupId))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
         }
@@ -63,7 +67,7 @@ public class ExpenseService {
         int count = request.participantIds().size();
         long share = request.amountMinor() / count;
         long remainder = request.amountMinor() % count;
-        // The request parser sorts IDs; the lowest IDs receive one extra minor unit each.
+        // sorts IDs, lowest IDs receive one extra minor unit each
         for (int index = 0; index < count; index++) {
             expense.addSplit(members.get(request.participantIds().get(index)), share + (index < remainder ? 1 : 0));
         }
@@ -75,7 +79,7 @@ public class ExpenseService {
         if (!memberships.existsById(new GroupMembershipId(requester.getId(), groupId))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
         }
-        return expenses.findByGroupId(groupId, Sort.unsorted()).stream()
+        return expenses.findByGroupId(groupId, NEWEST_FIRST).stream()
               .map(ExpenseResponse::from)
               .toList();
     }
