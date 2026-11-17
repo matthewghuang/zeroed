@@ -57,6 +57,14 @@ function GroupPage() {
         }
     }
 
+    useEffect(() =>{
+        if (selectedGroup) {
+            fetchMembers(selectedGroup.id);
+        } else {
+            setMembers([]);
+        }
+    }, [selectedGroup]);
+
     const signOut = async () => {
         try {
             await api.get('/api/auth/csrf');
