@@ -221,6 +221,16 @@ Error behavior:
 - `404 Not Found` — group does not exist or the caller is not a member. Group existence is not disclosed to non-members.
 - `500 Internal Server Error` — persistence failure.
  
+### `GET /api/groups/{groupId}/expenses`
+
+List the expenses of a group the caller is a member of, newest first (by `date`, then creation time).
+
+Suggested response: `200 OK` with an array of the expense representation above. A group with no expenses returns `[]`.
+
+Errors:
+`401 Unauthorized`: not signed in.
+`404 Not Found`: group does not exist or the caller is not a member. Group existence is not disclosed to non-members.
+
 ### `GET /api/expenses/{expenseId}`
 
 Return one expense, for a detailde view and for refreshing after an edit.
