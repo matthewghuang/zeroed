@@ -53,6 +53,9 @@ function GroupPage() {
             }
         } catch (error) {
             console.error("Failed to fetch groups", error);
+            if (error.response && error.response.status === 401) {
+                navigate('/login');
+            }
         }
     }
     useEffect(() => {
