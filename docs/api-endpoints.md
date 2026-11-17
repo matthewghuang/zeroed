@@ -192,11 +192,15 @@ NOTE: Custom splitting is currently not supported. It will come in a later itera
 | Field            | Required | Rules                                                                                                                                                                                |
 | ---------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `description`    | yes      | Trimmed; 1–200 characters after trimming; not blank.                                                                                                                                 |
-| `amount`         | yes      | Decimal string matching `^\d{1,9}\.\d{2}$`, strictly greater than `"0.00"`.                                                                                                          |
-| `currency`       | yes      | Three-letter ISO 4217 currency code (e.g., USD, CAD, EUR). Must be uppercase and supported by the application.                                                                       |
+| `amount`         | yes      | Exact decimal string with 1–9 integer digits and exactly the currency's ISO 4217 minor-unit exponent in fractional digits (no decimal point for exponent 0); strictly positive. |
+| `currency`       | yes      | Uppercase ISO 4217 code recognized by Java's `Currency` with a minor-unit exponent from 0 through 4. Codes without a defined minor unit, including `XXX` and `XTS`, are unsupported. |
 | `date`           | no       | Valid `YYYY-MM-DD`; defaults to the current UTC date. Future dates are allowed (pre-logging a planned expense).                                                                      |
 | `paidByUserId`   | no       | Integer user ID; must be a current member of the group. Defaults to the authenticated creator when omitted. Independent of `participantIds`: the payer need not appear in the split. |
 | `participantIds` | yes      | Non-empty array of unique integers; each must be a current member of the group; at most the current member count. The payer may appear or not appear.                                |
+
+Equal splits use integer minor units. Participants are sorted by ascending user ID; each receives `amountMinor / participantCount`, and the first `amountMinor % participantCount` participants receive one additional minor unit. Split amounts always sum exactly to the expense amount; zero shares are allowed. Responses list splits in this same order.
+
+Only omitted optional fields receive defaults. Explicit `null` values are invalid. Money must be a JSON string; IDs must be JSON integers, not strings or fractional numbers. Expense creation requires group membership even for admins.
 
 Suggested response: `201 Created` with the expense representation, and a `Location: /api/expenses/{id}` header.
 
@@ -207,7 +211,7 @@ Validation failures return `400 Bad Request`:
   "error": "validation_failed",
   "message": "Request body is invalid.",
   "fields": {
-    "amount": "must be a positive decimal with exactly two fractional digits",
+    "amount": "must have 1–9 integer digits and exactly 2 fractional digits",
     "paidByUserId": "must reference a current member of the group",
     "participantIds": "must contain only current group members"
   }

@@ -6,7 +6,7 @@ This document explains the first-pass relational data model for Zeroed: user acc
 
 ## Overview
 
-The application data model has three core tables:
+The application data model has five core tables:
 
 - `users` stores account identity and the password hash.
 - `groups` stores each expense-sharing group.
@@ -44,7 +44,7 @@ Each membership row points to exactly one user and one group. A `(user_id, group
 - `user_id` — foreign key to `users.id` and part of the composite primary key.
 - `group_id` — foreign key to `groups.id` and part of the composite primary key.
 - `joined_at` — when this particular user joined this particular group. It belongs to the relationship, not to the user or group, because each membership has its own date.
-- 
+
 ### `expenses`
 
 - `id` — primary key; the value in `/api/expenses/{expenseId}`.
@@ -67,6 +67,8 @@ One row per participant of one expense — the debit side of the balance.
 - `user_id` — foreign key to `users.id`, part of the composite primary key, `ON DELETE RESTRICT`.
 - `amount_minor` — how much of the parent expense this participant owes, in the parent's currency and exponent. `>= 0`; a participant can legitimately owe zero when an equal split leaves them with a remainder-free share of 0 (only possible if the amount is smaller than the participant count in minor units).
 - **No `currency` / `currency_exponent` columns** — inherited from `expense_splits.expense_id`.
+
+Creation persists the expense and all split rows in one transaction. Equal splitting assigns remainder minor units to participants in ascending user-ID order; no rounding or floating-point arithmetic is used.
 
 ### Explanation of ISO 4217
 
