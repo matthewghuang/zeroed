@@ -69,7 +69,7 @@ function ExpenseForm({ groupId, members, onSwitchToView, onExpenseCreated }: Exp
           </label>
           <input
             type="text"
-            id="text"
+            id="description"
             className="form-control"
             value={description}
             placeholder="description..."
@@ -81,7 +81,7 @@ function ExpenseForm({ groupId, members, onSwitchToView, onExpenseCreated }: Exp
           <input
             type="number"
             step="0.01"
-            id="text"
+            id="amount"
             className="form-control"
             value={amount}
             placeholder="0.00"
