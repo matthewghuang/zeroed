@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import GroupForm from "../components/GroupForm";
 import ExpenseForm from "../components/ExpenseForm";
+import ExpenseList from '../components/ExpenseList';
 import MainHeader from '../components/MainHeader';
 import bgImage from '../assets/zeroedBG.png';
 import GroupView from '../components/GroupView';
@@ -19,7 +20,7 @@ interface Member {
 }
 
 function GroupPage() {
-    const [currentView, setCurrentView] = useState<'groupView' | 'createGroup' | 'createExpense'>('groupView');
+    const [currentView, setCurrentView] = useState<'groupView' | 'createGroup' | 'createExpense' | 'expenseList' | 'expenseView'>('groupView');
     const [members, setMembers] = useState<Member[]>([]);
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
@@ -135,6 +136,7 @@ function GroupPage() {
                             selectedGroup={selectedGroup}
                             members={members}
                             onOpenExpenseForm={() => setCurrentView('createExpense')}
+                            onOpenExpenseList={() => setCurrentView('expenseList')}
                             onMemberAdded={() => fetchMembers(selectedGroup.id)}
                         />
                     )}
@@ -149,6 +151,13 @@ function GroupPage() {
                             groupId={selectedGroup.id}
                             members={members}
                             onSwitchToView={() => setCurrentView('groupView')}
+                        />
+                    )}
+                    {currentView === 'expenseList' && selectedGroup && (
+                        <ExpenseList
+                            groupId={selectedGroup.id}
+                            groupName={selectedGroup.name}
+                            members={members}
                         />
                     )}
                 </main>                   
