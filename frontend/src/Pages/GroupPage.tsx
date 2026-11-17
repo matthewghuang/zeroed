@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import GroupForm from "../components/GroupForm";
+import ExpenseForm from "../components/ExpenseForm";
+import ExpenseList from '../components/ExpenseList';
+import ExpenseView from '../components/ExpenseView';
 import MainHeader from '../components/MainHeader';
 import bgImage from '../assets/zeroedBG.png';
 import GroupView from '../components/GroupView';
@@ -12,8 +15,24 @@ interface Group {
     name: string;
 }
 
+interface Expense {
+    id: number;
+    description: string;
+    amount: number;
+    currency: string;
+    date: string;
+    paidByUserId: number;
+}
+
+interface Member {
+    id: number;
+    email: string;
+}
+
 function GroupPage() {
-    const [isViewing, setIsViewing] = useState(true);
+    const [currentView, setCurrentView] = useState<'groupView' | 'createGroup' | 'createExpense' | 'expenseList' | 'expenseView'>('groupView');
+    const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+    const [members, setMembers] = useState<Member[]>([]);
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
@@ -28,17 +47,38 @@ function GroupPage() {
             // user is in atleast 1 group
             if (userGroups.length > 0) {
                 setSelectedGroup(userGroups[0]); // first group visible
-                setIsViewing(true);              // make the groups view active
+                setCurrentView('groupView');     // make the groups view active
             } else {
-                setIsViewing(false)              // make the create view active
+                setCurrentView('createGroup')    // make the group create view active
             }
         } catch (error) {
             console.error("Failed to fetch groups", error);
+            if (error.response && error.response.status === 401) {
+                navigate('/login');
+            }
         }
     }
     useEffect(() => {
         fetchGroups();
     }, []);
+
+    const fetchMembers = async (groupId: number) => {
+        try {
+            const response = await api.get(`/api/groups/${groupId}/members`)
+            setMembers(response.data);
+        } catch (error) {
+            setMembers([]);
+            console.error("Failed to fetch members", error)
+        }
+    }
+
+    useEffect(() =>{
+        if (selectedGroup) {
+            fetchMembers(selectedGroup.id);
+        } else {
+            setMembers([]);
+        }
+    }, [selectedGroup]);
 
     const signOut = async () => {
         try {
@@ -78,7 +118,7 @@ function GroupPage() {
                                         key={group.id}
                                         onClick={() => {
                                             setSelectedGroup(group);
-                                            setIsViewing(true);
+                                            setCurrentView('groupView');
                                             
                                         }}
                                         className={`list-group-item card border border-secondary text-white mb-3 shadow-lg p-4 ${selectedGroup?.id === group.id ? 'active' : ''}`} style={{ backgroundColor: selectedGroup?.id === group.id ? '#4a3a4d' : '#342835', width: "100%"}}>
@@ -88,13 +128,13 @@ function GroupPage() {
                             )}
                         </div>
                         {/* Create Button (dissappears when making group) */}
-                        {isViewing ? (
+                        {currentView === 'groupView' && (
                             <div className="text-center">
-                                <button type="button" onClick={() => setIsViewing(false)} className="btn-link">
+                                <button type="button" onClick={() => setCurrentView('createGroup')} className="btn-link">
                                     Create Group
                                 </button>
                             </div>
-                        ) : null}
+                        )}
                     </div>
                     {/* Bottom Bumper */}
                     <div className="p-3 border-top border-black" style={{ backgroundColor: '#342835', height: '50px' }}>
@@ -103,16 +143,52 @@ function GroupPage() {
                         </button>
                     </div>
                 </div>
+                {/* Main Content Switch*/}
                 <main className="d-flex flex-grow-1 justify-content-center align-items-center p-4">
-                    {isViewing ? (
-                        <GroupView onSwitchToView={() => setIsViewing(false)} selectedGroup={selectedGroup}/>
-                    ) : (
-                        <GroupForm onSwitchToView={() => setIsViewing(true)} onGroupCreated={fetchGroups}/>
+                    {currentView === 'groupView' && selectedGroup && (
+                        <GroupView
+                            selectedGroup={selectedGroup}
+                            members={members}
+                            onOpenExpenseForm={() => setCurrentView('createExpense')}
+                            onOpenExpenseList={() => setCurrentView('expenseList')}
+                            onMemberAdded={() => fetchMembers(selectedGroup.id)}
+                        />
                     )}
-                </main>                   
+                    {currentView === 'createGroup' && (
+                        <GroupForm
+                            onSwitchToView={() => setCurrentView('groupView')}
+                            onGroupCreated={fetchGroups}
+                        />
+                    )}
+                    {currentView === 'createExpense' && selectedGroup && (
+                        <ExpenseForm
+                            groupId={selectedGroup.id}
+                            members={members}
+                            onSwitchToView={() => setCurrentView('groupView')}
+                        />
+                    )}
+                    {currentView === 'expenseList' && selectedGroup && (
+                        <ExpenseList
+                            groupId={selectedGroup.id}
+                            groupName={selectedGroup.name}
+                            members={members}
+                            onSelectExpense={(expense) => {
+                                setSelectedExpense(expense);
+                                setCurrentView('expenseView');
+                            }}
+                        />
+                    )}
+                    {currentView === 'expenseView' && selectedGroup && (
+                        <ExpenseView
+                            selectedGroup={selectedGroup}
+                            selectedExpense={selectedExpense}
+                            members={members}
+                            onOpenExpenseEdit={() => setCurrentView('createExpense')}
+                            onBackToList={() => setCurrentView('expenseList')}
+                        />
+                    )}
+                </main>
             </div>
-            {/* Main Content */}
-         
         </div>
     )
 }

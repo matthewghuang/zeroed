@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, } from 'react';
 import api from "../api";
+import GroupBalance from './GroupBalance';
 import ErrorNotif from './ErrorNotif';
 
 interface Member {
@@ -8,39 +9,19 @@ interface Member {
 }
 
 interface GroupViewProps {
-    onSwitchToView: () => void;
     selectedGroup: { id: number; name: string } | null;
+    members: Member[]
+    onOpenExpenseForm: () => void
+    onOpenExpenseList: () => void
+    onMemberAdded: () => void; // to fetch members again
 }
 
 
-function GroupView({ selectedGroup }: GroupViewProps) {
-    const [members, setMembers] = useState<Member[]>([]);
+function GroupView({ selectedGroup, members, onOpenExpenseForm, onOpenExpenseList, onMemberAdded }: GroupViewProps) {
     const [email, setEmail] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const [membersError, setMembersError] = useState('');
     
-    const fetchMembers = async () => {
-        if (!selectedGroup) return;
-
-        try {
-            setMembersError('');
-            const response = await api.get(`/api/groups/${selectedGroup.id}/members`);
-            setMembers(response.data);
-        } catch (error) {
-            setMembers([]);
-            setMembersError('Unable to load group members. Please try again.');
-            console.error("Failed to fetch group members", error);
-        }
-    };
-
-    useEffect(() => {
-        setMembers([]);
-        fetchMembers();
-    }, [selectedGroup]);
-
-
-
     const handleForm = async (e: any) => {
         e.preventDefault();
         if (!selectedGroup) return;
@@ -52,7 +33,8 @@ function GroupView({ selectedGroup }: GroupViewProps) {
             const response = await api.post(`/api/groups/${selectedGroup.id}/members`, { email: email });
             console.log('Group Member Added successfully', response.data);
             setSuccessMessage("Group Member Added Successfully!");
-            fetchMembers();
+            setEmail('');
+            onMemberAdded();
         } catch (error: any) {
             console.error('Group Member Addition failed', error);
             const msg = "Email not authorized as a member."
@@ -61,8 +43,20 @@ function GroupView({ selectedGroup }: GroupViewProps) {
     };
 
     return (
-        <div className="container-fluid card border border-secondary text-white mb-3 shadow-lg p-4 h-100" style={{ backgroundColor: '#342835' }}>
+        <div className="container-fluid card border border-secondary text-white mb-3 shadow-lg p-4 h-100 overflow-auto" style={{ backgroundColor: '#342835' }}>
             <h1 className="text-center mb-4">{selectedGroup?.name}</h1>
+            <button
+                className="btn btn-outline-light"
+                onClick={onOpenExpenseForm}
+            >
+                Add Expense
+            </button>
+            <button
+                className="btn btn-outline-light"
+                onClick={onOpenExpenseList}
+            >
+                View Expenses
+            </button>
             {/* Add members */}
             <form onSubmit={handleForm} className="mb-4">
                 <div className="input-group">
@@ -81,7 +75,6 @@ function GroupView({ selectedGroup }: GroupViewProps) {
 
             {/* Member List */}
             <h4 className="border-bottom pb-2">Members</h4>
-            {membersError && <ErrorNotif message={membersError} />}
             <ul className="list-group list-group-flush bg-transparent">
                 {members.map((member) => (
                     <li key={member.id} className="list-group-item bg-transparent text-white border-secondary">
@@ -89,6 +82,7 @@ function GroupView({ selectedGroup }: GroupViewProps) {
                     </li>
                 ))}
             </ul>
+            {selectedGroup && <GroupBalance groupId={selectedGroup.id} />}
         </div>
     )
 }

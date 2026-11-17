@@ -1,0 +1,8 @@
+FROM maven:3.9.6-eclipse-temurin-21
+
+WORKDIR /app
+
+EXPOSE 8080
+
+# Start Spring Boot in development mode
+CMD ["mvn", "spring-boot:run"]
