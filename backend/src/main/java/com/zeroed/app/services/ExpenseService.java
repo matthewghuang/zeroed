@@ -42,7 +42,7 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseResponse createExpense(Long groupId, CreateExpenseRequest request, User creator) {
-        // unlike member listing, expense creation gives admins no membership bypass
+        // Unlike member listing, expense creation gives admins no membership bypass.
         if (!memberships.existsById(new GroupMembershipId(creator.getId(), groupId))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
         }
@@ -67,7 +67,7 @@ public class ExpenseService {
         int count = request.participantIds().size();
         long share = request.amountMinor() / count;
         long remainder = request.amountMinor() % count;
-        // sorts IDs, lowest IDs receive one extra minor unit each
+        // The request parser sorts IDs; the lowest IDs receive one extra minor unit each.
         for (int index = 0; index < count; index++) {
             expense.addSplit(members.get(request.participantIds().get(index)), share + (index < remainder ? 1 : 0));
         }
