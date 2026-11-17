@@ -15,6 +15,14 @@ import com.zeroed.app.models.Expense;
 
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     List<Expense> findByGroupId(Long groupId, Sort sort);
+    @Query("""
+            select distinct expense from Expense expense
+            join fetch expense.paidBy
+            left join fetch expense.splits split
+            left join fetch split.user
+            where expense.group.id = :groupId
+            """)
+    List<Expense> findForBalancesByGroupId(@Param("groupId") Long groupId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select expense from Expense expense where expense.id = :expenseId")
