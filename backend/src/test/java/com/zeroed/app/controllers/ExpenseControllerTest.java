@@ -217,11 +217,11 @@ class ExpenseControllerTest {
 
     @ParameterizedTest
     @MethodSource("currencies")
-    void defaultsToAllCurrentMembersWithExactCurrencySplits(String currency, String amount,
-                                                            long minor, int exponent, String first,
-                                                            String second) throws Exception {
+    void splitsExplicitParticipantsWithExactCurrencySplits(String currency, String amount,
+                                                          long minor, int exponent, String first,
+                                                          String second) throws Exception {
         ObjectNode request = validRequest().put("currency", currency).put("amount", amount);
-        request.remove("participantIds");
+        request.putArray("participantIds").add(creator.getId()).add(payer.getId()).add(third.getId());
         LocalDate before = LocalDate.now(ZoneOffset.UTC);
         var response = post(client, expensePath(group.getId()), json.writeValueAsString(request));
         LocalDate after = LocalDate.now(ZoneOffset.UTC);
