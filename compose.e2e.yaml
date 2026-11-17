@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: zeroed_e2e
+      POSTGRES_USER: zeroed
+      POSTGRES_PASSWORD: e2epassword
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zeroed -d zeroed_e2e"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:18080:8080"
+    environment:
+      DB_URL: postgresql://db:5432/zeroed_e2e
+      DB_USERNAME: zeroed
+      DB_PASSWORD: e2epassword
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+    depends_on:
+      db:
+        condition: service_healthy
+    stop_grace_period: 5s
