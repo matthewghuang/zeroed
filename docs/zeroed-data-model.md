@@ -57,7 +57,7 @@ Each membership row points to exactly one user and one group. A `(user_id, group
 - `created_by_user_id` — the member who recorded it, derived from the session. Sole owner of edit and delete rights.
 - `split_type` — `'EQUAL'`. Custom splitting is explicitly out of scope for this iteration. The column exists so existing rows stay interpretable when a second split type is added.
 - `expense_date` — calendar date of the expense; defaults to the current UTC date; future dates are allowed.
-- `created_at` / `updated_at` — row timestamps; `updated_at` is bumped by every successful `PATCH`.
+- `created_at` / `updated_at` — row timestamps stored and returned at microsecond precision; `created_at` is immutable and `updated_at` advances on every successful `PATCH`.
 
 ### `expense_splits`
 
@@ -69,6 +69,10 @@ One row per participant of one expense — the debit side of the balance.
 - **No `currency` / `currency_exponent` columns** — inherited from `expense_splits.expense_id`.
 
 Creation persists the expense and all split rows in one transaction. Equal splitting assigns remainder minor units to participants in ascending user-ID order; no rounding or floating-point arithmetic is used.
+
+Editing is restricted to the creator while they remain a group member. It updates the expense and recalculates equal splits in one transaction. Overlapping participants keep their composite-key rows; removed participants' split rows are deleted, and new participants receive new rows. Omitted historical payers and participants are retained even if they have left the group; explicitly supplied user references must be current members.
+
+Deletion is creator-only and permanent: the expense and its splits are removed atomically, without modifying other expenses. Concurrent edits/deletions lock the expense row. Balances are not stored; the surviving expense credits and split debits are their authoritative inputs.
 
 ### Explanation of ISO 4217
 
