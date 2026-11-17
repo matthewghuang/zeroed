@@ -11,6 +11,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Map;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -119,6 +122,107 @@ class ExpenseControllerTest {
         assertEquals(2, jdbc.queryForObject("select count(*) from expense_splits where expense_id = ?", Integer.class, id));
         assertEquals(1000L, jdbc.queryForObject("select sum(amount_minor) from expense_splits where expense_id = ?", Long.class, id));
     }
+
+    @Test
+    void listsGroupExpensesForMembersOutsideTheSplitWithoutLeakingOtherGroups() throws Exception {
+        ObjectNode request = validRequest().put("description", "Museum tickets")
+                .put("amount", "10.01").put("paidByUserId", payer.getId()).put("date", "2030-02-28");
+        request.putArray("participantIds").add(payer.getId()).add(creator.getId());
+        var created = post(client, expensePath(group.getId()), json.writeValueAsString(request));
+        assertEquals(201, created.statusCode(), created.body());
+        long expenseId = json.readTree(created.body()).get("id").longValue();
+
+        Group otherGroup = groups.saveAndFlush(new Group("Other trip", creator));
+        memberships.saveAndFlush(new GroupMembership(creator, otherGroup));
+        memberships.saveAndFlush(new GroupMembership(third, otherGroup));
+        var otherExpense = post(client, expensePath(otherGroup.getId()),
+                json.writeValueAsString(validRequest()));
+        assertEquals(201, otherExpense.statusCode(), otherExpense.body());
+
+        var response = get(signedIn(third), expensePath(group.getId()));
+        assertEquals(200, response.statusCode(), response.body());
+        JsonNode body = json.readTree(response.body());
+        assertTrue(body.isArray(), response.body());
+        assertEquals(1, body.size());
+        JsonNode expense = body.get(0);
+        assertEquals(expenseId, expense.get("id").longValue());
+        assertEquals(group.getId().longValue(), expense.get("groupId").longValue());
+        assertEquals("Museum tickets", expense.get("description").asString());
+        assertEquals("10.01", expense.get("amount").asString());
+        assertEquals("CAD", expense.get("currency").asString());
+        assertEquals(payer.getId().longValue(), expense.at("/paidBy/id").longValue());
+        assertEquals(payer.getEmail(), expense.at("/paidBy/email").asString());
+        assertEquals(creator.getId().longValue(), expense.at("/createdBy/id").longValue());
+        assertEquals(creator.getEmail(), expense.at("/createdBy/email").asString());
+        assertEquals(2, expense.get("paidBy").size());
+        assertEquals(2, expense.get("createdBy").size());
+        assertEquals("equal", expense.get("splitType").asString());
+        assertEquals(2, expense.get("splits").size());
+        assertEquals(creator.getId().longValue(), expense.at("/splits/0/userId").longValue());
+        assertEquals("5.01", expense.at("/splits/0/amount").asString());
+        assertEquals(payer.getId().longValue(), expense.at("/splits/1/userId").longValue());
+        assertEquals("5.00", expense.at("/splits/1/amount").asString());
+        assertEquals("2030-02-28", expense.get("date").asString());
+        assertNotNull(expense.get("createdAt").asString());
+        assertEquals(expense.get("createdAt"), expense.get("updatedAt"));
+        assertFalse(response.body().contains("password"));
+    }
+
+    @Test
+    void listsExpensesByDescendingDateThenCreationTimeThenId() throws Exception {
+        long[] ids = new long[4];
+        String[] dates = {"2030-02-27", "2030-02-28", "2030-02-28", "2030-02-28"};
+        String[] createdAt = {"2030-03-03T00:00:00Z", "2030-03-01T00:00:00Z",
+                "2030-03-02T00:00:00Z", "2030-03-02T00:00:00Z"};
+        for (int index = 0; index < ids.length; index++) {
+            var created = post(client, expensePath(group.getId()),
+                    json.writeValueAsString(validRequest().put("date", dates[index])));
+            assertEquals(201, created.statusCode(), created.body());
+            ids[index] = json.readTree(created.body()).get("id").longValue();
+            jdbc.update("update expenses set created_at = ? where id = ?",
+                    Timestamp.from(Instant.parse(createdAt[index])), ids[index]);
+        }
+
+        var response = get(client, expensePath(group.getId()));
+        assertEquals(200, response.statusCode(), response.body());
+        JsonNode body = json.readTree(response.body());
+        assertTrue(body.isArray(), response.body());
+        assertEquals(ids.length, body.size());
+        for (int index = 0; index < ids.length; index++) {
+            assertEquals(ids[ids.length - 1 - index], body.get(index).get("id").longValue());
+        }
+    }
+
+    @Test
+    void listsAnEmptyArrayForAGroupWithoutExpenses() throws Exception {
+        var response = get(client, expensePath(group.getId()));
+        assertEquals(200, response.statusCode(), response.body());
+        assertEquals(json.createArrayNode(), json.readTree(response.body()));
+    }
+
+    @Test
+    void requiresAuthenticationToListExpenses() throws Exception {
+        var response = get(newClient(), expensePath(group.getId()));
+        assertEquals(401, response.statusCode(), response.body());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void hidesExpenseListsFromNonMembersIncludingAdmins(boolean admin) throws Exception {
+        if (admin) jdbc.update("update users set role = 'ADMIN' where id = ?", outsider.getId());
+        HttpClient nonMember = signedIn(outsider);
+        for (long groupId : new long[] {group.getId(), Long.MAX_VALUE}) {
+            var response = get(nonMember, expensePath(groupId));
+            assertEquals(404, response.statusCode(), response.body());
+        }
+    }
+
+    @Test
+    void returnsNotFoundWhenListingExpensesForAMissingGroup() throws Exception {
+        var response = get(client, expensePath(Long.MAX_VALUE));
+        assertEquals(404, response.statusCode(), response.body());
+    }
+
 
     @ParameterizedTest
     @MethodSource("currencies")
@@ -297,6 +401,10 @@ class ExpenseControllerTest {
         return http.send(HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json")
                 .header(token.get("headerName").asString(), value)
                 .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> get(HttpClient http, String path) throws Exception {
+        return http.send(HttpRequest.newBuilder(uri(path)).GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
     private String expensePath(long groupId) { return "/api/groups/" + groupId + "/expenses"; }
