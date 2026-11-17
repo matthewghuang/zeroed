@@ -2,19 +2,27 @@ import { useState } from "react";
 import api from "../api";
 import LoginNotif from "./ErrorNotif";
 
+interface Member {
+    id: number;
+    email: string;
+}
+
 interface ExpenseFormProps {
   groupId: number;
+  members: Member[]; // from GroupView
   onSwitchToView: () => void;
   onExpenseCreated?: () => void;
 }
 
-function ExpenseForm({ groupId, onSwitchToView, onExpenseCreated }: ExpenseFormProps) {
+function ExpenseForm({ groupId, members, onSwitchToView, onExpenseCreated }: ExpenseFormProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("CAD");
   const [date, setDate] = useState("");
   const [paidByUserId, setPaidByUserId] = useState<number | "">("");
-  const [participantIds, setParticipantIds] = useState<number[]>([]);
+  
+  const participantIds = members.map(m => m.id)
+
 
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -87,12 +95,11 @@ function ExpenseForm({ groupId, onSwitchToView, onExpenseCreated }: ExpenseFormP
             className="form-select"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            >
-              <option value="CAD">CAD</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-            </select>
-        </div>
+          >
+            <option value="CAD">CAD</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
           <label htmlFor="date" className="form-label">
             date:
           </label>
@@ -104,6 +111,25 @@ function ExpenseForm({ groupId, onSwitchToView, onExpenseCreated }: ExpenseFormP
             placeholder="description..."
             onChange={(e) => setDate(e.target.value)}
           />
+          <label htmlFor="paidBy" className="form-label">
+            Paid By:
+          </label>
+          <select
+            id="paidBy"
+            className="form-select"
+            value={paidByUserId}
+            onChange={(e) => setPaidByUserId(e.target.value ? Number(e.target.value) : "")}
+            required
+          >
+            <option value="">Select member...</option>
+            {members.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.email}
+              </option>
+            )
+          )}
+          </select>
+        </div>
         <div className="text-center mt-3 mb-3">
           <button type="submit" className="btn btn-secondary text-center">
             Create Expense
