@@ -11,8 +11,12 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -21,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -118,6 +123,117 @@ class ExpenseControllerTest {
         assertEquals(1000L, jdbc.queryForObject("select amount_minor from expenses where id = ?", Long.class, id));
         assertEquals(2, jdbc.queryForObject("select count(*) from expense_splits where expense_id = ?", Integer.class, id));
         assertEquals(1000L, jdbc.queryForObject("select sum(amount_minor) from expense_splits where expense_id = ?", Long.class, id));
+    }
+
+    @Test
+    void listsExpenseDetailsWithExactAmountsAndPublicUserProfiles() throws Exception {
+        ObjectNode request = validRequest().put("description", "Museum tickets")
+                .put("amount", "10.01").put("paidByUserId", payer.getId()).put("date", "2030-02-28");
+        request.putArray("participantIds").add(payer.getId()).add(creator.getId());
+        long expenseId = createExpense(group.getId(), request);
+        Instant createdAt = Instant.parse("2030-03-01T12:00:00Z");
+        Instant updatedAt = Instant.parse("2030-03-02T12:00:00Z");
+        jdbc.update("update expenses set created_at = ?, updated_at = ? where id = ?",
+                Timestamp.from(createdAt), Timestamp.from(updatedAt), expenseId);
+
+        JsonNode result = listExpenses(client, group.getId());
+
+        assertEquals(1, result.size());
+        JsonNode expense = result.get(0);
+        assertEquals(expenseId, expense.get("id").longValue());
+        assertEquals(group.getId().longValue(), expense.get("groupId").longValue());
+        assertEquals("Museum tickets", expense.get("description").asString());
+        assertEquals("10.01", expense.get("amount").asString());
+        assertEquals("CAD", expense.get("currency").asString());
+        assertEquals("equal", expense.get("splitType").asString());
+        assertEquals("2030-02-28", expense.get("date").asString());
+        assertEquals(createdAt, Instant.parse(expense.get("createdAt").asString()));
+        assertEquals(updatedAt, Instant.parse(expense.get("updatedAt").asString()));
+        assertEquals(json.readTree("""
+                {"id": %d, "email": "payer@example.com"}
+                """.formatted(payer.getId())), expense.get("paidBy"));
+        assertEquals(json.readTree("""
+                {"id": %d, "email": "creator@example.com"}
+                """.formatted(creator.getId())), expense.get("createdBy"));
+        assertEquals(json.readTree("""
+                [
+                  {"userId": %d, "amount": "5.01"},
+                  {"userId": %d, "amount": "5.00"}
+                ]
+                """.formatted(creator.getId(), payer.getId())), expense.get("splits"));
+    }
+
+    @Test
+    void membersCanListExpensesTheyDidNotCreatePayOrParticipateIn() throws Exception {
+        long expenseId = createExpense(group.getId(), validRequest());
+        HttpClient memberOutsideTheExpense = signedIn(third);
+
+        JsonNode result = listExpenses(memberOutsideTheExpense, group.getId());
+
+        assertEquals(1, result.size());
+        assertEquals(expenseId, result.get(0).get("id").longValue());
+    }
+
+    @Test
+    void listsOnlyExpensesFromTheRequestedGroup() throws Exception {
+        Group otherGroup = groups.saveAndFlush(new Group("Other trip", creator));
+        memberships.saveAndFlush(new GroupMembership(creator, otherGroup));
+        createExpense(otherGroup.getId(), validRequest());
+        long requestedExpenseId = createExpense(group.getId(), validRequest());
+
+        JsonNode result = listExpenses(client, group.getId());
+
+        assertEquals(1, result.size());
+        assertEquals(requestedExpenseId, result.get(0).get("id").longValue());
+    }
+
+    @Test
+    void listsExpensesByDescendingDateThenCreationTimeThenId() throws Exception {
+        // Creation times deliberately disagree with ID order to exercise every sort key.
+        long earlierDate = createExpenseAt("2030-02-27", "2030-03-03T00:00:00Z");
+        long laterCreation = createExpenseAt("2030-02-28", "2030-03-02T00:00:00Z");
+        long earlierCreation = createExpenseAt("2030-02-28", "2030-03-01T00:00:00Z");
+        long higherIdWithSameDateAndCreationTime = createExpenseAt("2030-02-28", "2030-03-02T00:00:00Z");
+
+        JsonNode result = listExpenses(client, group.getId());
+
+        List<Long> actualIds = new ArrayList<>();
+        for (JsonNode expense : result) {
+            actualIds.add(expense.get("id").longValue());
+        }
+        assertEquals(List.of(higherIdWithSameDateAndCreationTime, laterCreation, earlierCreation, earlierDate),
+                actualIds);
+    }
+
+    @Test
+    void listsAnEmptyArrayForAGroupWithoutExpenses() throws Exception {
+        assertEquals(json.createArrayNode(), listExpenses(client, group.getId()));
+    }
+
+    @Test
+    void requiresAuthenticationToListExpenses() throws Exception {
+        var response = get(newClient(), expensePath(group.getId()));
+        assertEquals(401, response.statusCode(), response.body());
+    }
+
+    @ParameterizedTest(name = "non-member with role {0} cannot list expenses")
+    @ValueSource(strings = {"REGULAR", "ADMIN"})
+    void hidesExpenseListsFromNonMembersRegardlessOfRole(String role) throws Exception {
+        createExpense(group.getId(), validRequest());
+        jdbc.update("update users set role = ? where id = ?", role, outsider.getId());
+        HttpClient nonMember = signedIn(outsider);
+
+        var existingGroup = get(nonMember, expensePath(group.getId()));
+        var missingGroup = get(nonMember, expensePath(Long.MAX_VALUE));
+
+        assertEquals(404, existingGroup.statusCode(), existingGroup.body());
+        assertEquals(404, missingGroup.statusCode(), missingGroup.body());
+    }
+
+    @Test
+    void returnsNotFoundWhenListingExpensesForAMissingGroup() throws Exception {
+        var response = get(client, expensePath(Long.MAX_VALUE));
+        assertEquals(404, response.statusCode(), response.body());
     }
 
     @ParameterizedTest
@@ -261,6 +377,27 @@ class ExpenseControllerTest {
         }
     }
 
+    private long createExpense(long groupId, ObjectNode request) throws Exception {
+        var response = post(client, expensePath(groupId), json.writeValueAsString(request));
+        assertEquals(201, response.statusCode(), response.body());
+        return json.readTree(response.body()).get("id").longValue();
+    }
+
+    private long createExpenseAt(String date, String createdAt) throws Exception {
+        long expenseId = createExpense(group.getId(), validRequest().put("date", date));
+        jdbc.update("update expenses set created_at = ? where id = ?",
+                Timestamp.from(Instant.parse(createdAt)), expenseId);
+        return expenseId;
+    }
+
+    private JsonNode listExpenses(HttpClient http, long groupId) throws Exception {
+        var response = get(http, expensePath(groupId));
+        assertEquals(200, response.statusCode(), response.body());
+        JsonNode result = json.readTree(response.body());
+        assertTrue(result.isArray(), response.body());
+        return result;
+    }
+
     private ObjectNode validRequest() {
         ObjectNode request = json.createObjectNode().put("description", "Dinner")
                 .put("amount", "10.00").put("currency", "CAD");
@@ -297,6 +434,10 @@ class ExpenseControllerTest {
         return http.send(HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json")
                 .header(token.get("headerName").asString(), value)
                 .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> get(HttpClient http, String path) throws Exception {
+        return http.send(HttpRequest.newBuilder(uri(path)).GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
     private String expensePath(long groupId) { return "/api/groups/" + groupId + "/expenses"; }

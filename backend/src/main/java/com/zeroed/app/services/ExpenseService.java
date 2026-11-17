@@ -4,9 +4,11 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -23,6 +25,10 @@ import com.zeroed.app.repositories.GroupRepository;
 
 @Service
 public class ExpenseService {
+    private static final Sort NEWEST_FIRST = Sort.by(
+          Sort.Order.desc("date"),
+          Sort.Order.desc("createdAt"),
+          Sort.Order.desc("id"));
     private final ExpenseRepository expenses;
     private final GroupRepository groups;
     private final GroupMembershipRepository memberships;
@@ -66,5 +72,15 @@ public class ExpenseService {
             expense.addSplit(members.get(request.participantIds().get(index)), share + (index < remainder ? 1 : 0));
         }
         return ExpenseResponse.from(expenses.saveAndFlush(expense));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExpenseResponse> listExpenses(Long groupId, User requester) {
+        if (!memberships.existsById(new GroupMembershipId(requester.getId(), groupId))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
+        }
+        return expenses.findByGroupId(groupId, NEWEST_FIRST).stream()
+              .map(ExpenseResponse::from)
+              .toList();
     }
 }

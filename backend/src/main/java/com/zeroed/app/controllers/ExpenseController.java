@@ -2,6 +2,7 @@ package com.zeroed.app.controllers;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import com.zeroed.app.dto.CreateExpenseRequest;
 import com.zeroed.app.dto.ExpenseResponse;
@@ -46,6 +48,19 @@ public class ExpenseController {
 
         ExpenseResponse expense = expenses.createExpense(groupId, CreateExpenseRequest.from(body), creator);
         return ResponseEntity.created(URI.create("/api/expenses/" + expense.id())).body(expense);
+    }
+    
+    @GetMapping
+    public ResponseEntity<List<ExpenseResponse>> listExpenses(@PathVariable Long groupId,
+                                                              Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        var requester = users.findByEmail(authentication.getName()).orElse(null);
+        if (requester == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        return ResponseEntity.ok(expenses.listExpenses(groupId, requester));
     }
 
     public record RequestError(String error, String message, Map<String, String> fields) {}
