@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import GroupForm from "../components/GroupForm";
 import ExpenseForm from "../components/ExpenseForm";
 import ExpenseList from '../components/ExpenseList';
+import ExpenseView from '../components/ExpenseView';
 import MainHeader from '../components/MainHeader';
 import bgImage from '../assets/zeroedBG.png';
 import GroupView from '../components/GroupView';
@@ -14,6 +15,15 @@ interface Group {
     name: string;
 }
 
+interface Expense {
+    id: number;
+    description: string;
+    amount: number;
+    currency: string;
+    date: string;
+    paidByUserId: number;
+}
+
 interface Member {
     id: number;
     email: string;
@@ -21,6 +31,7 @@ interface Member {
 
 function GroupPage() {
     const [currentView, setCurrentView] = useState<'groupView' | 'createGroup' | 'createExpense' | 'expenseList' | 'expenseView'>('groupView');
+    const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const [members, setMembers] = useState<Member[]>([]);
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
@@ -158,9 +169,22 @@ function GroupPage() {
                             groupId={selectedGroup.id}
                             groupName={selectedGroup.name}
                             members={members}
+                            onSelectExpense={(expense) => {
+                                setSelectedExpense(expense);
+                                setCurrentView('expenseView');
+                            }}
                         />
                     )}
-                </main>                   
+                    {currentView === 'expenseView' && selectedGroup && (
+                        <ExpenseView
+                            selectedGroup={selectedGroup}
+                            selectedExpense={selectedExpense}
+                            members={members}
+                            onOpenExpenseEdit={() => setCurrentView('createExpense')}
+                            onBackToList={() => setCurrentView('expenseList')}
+                        />
+                    )}
+                </main>
             </div>
         </div>
     )

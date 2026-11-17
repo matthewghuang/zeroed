@@ -15,14 +15,16 @@ interface Expense {
     date: string;
     paidByUserId: number;
 }
+
 interface ExpenseListProps {
     groupId: number;
     members: Member[];
     groupName: string;
+    onSelectExpense: (expense: Expense) => void;
 }
 
 
-function ExpenseList({ groupId, groupName, members  }: ExpenseListProps) {
+function ExpenseList({ groupId, groupName, members, onSelectExpense  }: ExpenseListProps) {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [errorMessage, setErrorMessage] = useState("");
 
@@ -63,7 +65,10 @@ function ExpenseList({ groupId, groupName, members  }: ExpenseListProps) {
             ) : (
                 <ul className='list-group list-group-flush bg-transparent'>
                     {expenses.map((expense) => (
-                        <li key={expense.id} className='list-group-item align-items-center'>
+                        <li 
+                            key={expense.id} className='list-group-item align-items-center'
+                            onClick={() => onSelectExpense(expense)}
+                        >
                             <div>
                                 <h5 className='mb-1'>{expense.description}</h5>
                                 <small>Paid by: {getMemberEmail(expense.paidByUserId)} {expense.date ? `on ${expense.date}` : ''}</small>
