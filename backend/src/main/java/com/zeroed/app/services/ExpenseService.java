@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -74,6 +75,8 @@ public class ExpenseService {
         if (!memberships.existsById(new GroupMembershipId(requester.getId(), groupId))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
         }
-        return List.of();
+        return expenses.findByGroupId(groupId, Sort.unsorted()).stream()
+              .map(ExpenseResponse::from)
+              .toList();
     }
 }
