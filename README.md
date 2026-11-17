@@ -38,7 +38,8 @@ The repository root contains the Dockerfile, shared configuration and VS Code wo
 
 Install the following:
 
-- Docker
+- Java Development Kit (JDK) 21
+- Node.js and npm
 - Git
 - VS Code (recommended) or another IDE
 
@@ -56,26 +57,46 @@ Clone the Zeroed repository from GitHub and navigate to the project directory.
 
 The workspace separates the frontend and backend into their own project roots, improving Java classpath detection and development tooling.
 
-### 3. Setting up dev environment
+### 3. Install Dependencies
 
-We use Docker to setup containerized production deployments and dev environments to maintain consistency and ease of setup between developers.
+**Frontend**
 
-In the root project directory run:
+Navigate to the frontend directory and run `npm ci` to install dependencies.
+
+**Backend**
+
+Navigate to the backend directory and run the Maven wrapper with clean compile to download dependencies and compile the application.
+
+On Windows, use `mvnw.cmd` instead of `./mvnw`
+
+Setup a Postgres DB either on Render or locally and set the environment variables.
 
 ```
-docker compose up --build
+cd backend
+cp .env.example .env
 ```
 
-It will download all required images to build the dev container.
+Set the environment variables and Spring Boot will read it on startup.
 
+### 4. Start the Development Servers
 
-To start the container run:
+Run the frontend and backend in separate terminals.
 
-```
-docker compose up
-```
+**Backend — Spring Boot**
 
-The frontend dev server is hosted at `http://localhost:5173` and all API requests are proxied to the Spring Boot backend. The Docker containers mount the local filesystem rather than copying so any changes made locally will automatically update.
+Navigate to the backend directory and run `./mvnw spring-boot:run`
+
+The backend runs at `http://localhost:8080`
+
+**Frontend — Vite**
+
+Navigate to the frontend directory and run `npm run dev`
+
+The frontend runs at `http://localhost:5173`
+
+Vite automatically proxies requests beginning with /api to the Spring Boot backend on port 8080.
+
+Use relative /api URLs in frontend requests rather than hardcoding the backend address.
 
 ## Production Build
 

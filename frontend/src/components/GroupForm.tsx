@@ -48,10 +48,10 @@ function GroupForm({ onSwitchToView, onGroupCreated }: GroupFormProps) {
           </label>
           <input
             type="text"
-            id="groupName"
+            id="text"
             className="form-control"
             value={groupName}
-            placeholder="group name..."
+            placeholder="text"
             onChange={(e) => setGroupName(e.target.value)}
           ></input>
         </div>
