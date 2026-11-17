@@ -46,4 +46,5 @@ public class ExpenseSplit {
 
     public User getUser() { return user; }
     public long getAmountMinor() { return amountMinor; }
+    public void setAmountMinor(long amountMinor) { this.amountMinor = amountMinor; }
 }
