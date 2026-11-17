@@ -3,6 +3,7 @@ package com.zeroed.app.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -20,8 +21,10 @@ public record ExpenseResponse(Long id, Long groupId, String description, String 
                 format(expense.getAmountMinor(), exponent), expense.getCurrency(),
                 member(expense.getPaidBy()), member(expense.getCreatedBy()),
                 expense.getSplitType().toLowerCase(Locale.ROOT),
-                expense.getSplits().stream().map(split -> new Split(split.getUser().getId(),
-                        format(split.getAmountMinor(), exponent))).toList(),
+                expense.getSplits().stream()
+                        .sorted(Comparator.comparing(split -> split.getUser().getId()))
+                        .map(split -> new Split(split.getUser().getId(),
+                                format(split.getAmountMinor(), exponent))).toList(),
                 expense.getDate(), expense.getCreatedAt(), expense.getUpdatedAt());
     }
 

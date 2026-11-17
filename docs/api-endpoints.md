@@ -237,9 +237,9 @@ Errors:
 
 ### `GET /api/expenses/{expenseId}`
 
-Return one expense, for a detailde view and for refreshing after an edit.
+Return one expense for a detail view or for refreshing after an edit. Any current group member may read it; the ADMIN role does not bypass membership.
 
-Suggested response: `200 OK` with the expense representation.
+Response: `200 OK` with the expense representation.
 
 Errors: `401` when not signed in; `404` when the expense does not exist, is deleted, or belongs to a group the caller is not a member of. A non-member always receives `404`, never `403`, so the endpoint does not disclose whether the expense exists.
 
@@ -247,7 +247,7 @@ Errors: `401` when not signed in; `404` when the expense does not exist, is dele
 
 Edit an existing expense. **Only the creator (`createdBy`) may edit**; any other group member receives `403 Forbidden`.
 
-Editable fields: `description`, `amount`, `date`, `paidByUserId`, `participantIds`, `currency`. The body must contain at least one of them; an empty object or any other property is rejected with `400`. The payer is changed by sending `paidByUserId`.
+Editable fields: `description`, `amount`, `date`, `paidByUserId`, `participantIds`, `currency`. The body must contain at least one of them. Non-object or empty bodies, explicit `null` values, unknown or immutable fields, and invalid values are rejected with `400` using the same structured error representation as expense creation. Unknown or immutable fields use `unsupported_field`; other validation errors use `validation_failed`. The payer is changed by sending `paidByUserId`.
 
 Request:
 
@@ -264,10 +264,14 @@ Request:
 Semantics:
 
 - Provided fields replace the stored values; omitted fields keep their current values.
-- `participantIds`, when present, replaces the entire participant set (not a merge).
+- `participantIds`, when present, replaces the entire participant set (not a merge) and must contain only current group members. When omitted, stored participants remain unchanged, including former members.
 - `paidByUserId`, when present, replaces the payer and is validated the same way as on creation: it must reference a current member of the group, including the creator's own ID when they paid. When it is omitted, the stored `paidBy` is kept as-is and is not revalidated against current membership, so an expense whose payer later left the group still credits that user in balances.
+- Supplied `amount` is validated against the effective currency (supplied `currency`, or the stored currency when omitted). A currency-only change retains the numeric amount and rescales minor units exactly: CAD `"10.00"` becomes JPY `"10"`, but CAD `"10.01"` cannot become JPY without a replacement amount. Inexact conversion returns `400` on `amount`; no rounding or exchange-rate conversion occurs.
+- Changes to amount, currency, or participants recalculate equal shares with the same ascending-user-ID remainder rule as creation. Parent fields and split rows are persisted in one transaction; a failure rolls back both.
+- `id`, `groupId`, `createdBy`, and `createdAt` never change. Every successful patch advances `updatedAt`; expense timestamps use database-compatible microsecond precision.
+- Concurrent edits and deletions serialize on the expense row. Non-members receive `404` before creator checks; another member, including an admin or the payer, receives `403`.
 
-Suggested response: `200 OK` with the updated expense representation.
+Response: `200 OK` with the updated expense representation.
 
 Error behavior:
 
@@ -281,13 +285,15 @@ Error behavior:
 
 Delete an expense. **Only the creator (`createdBy`) may delete**; any other group member receives `403 Forbidden`.
 
-Suggested response: `204 No Content` with an empty body.
+Response: `204 No Content` with an empty body.
 
 Semantics:
 
 - The expense is removed from all history responses and from balance calculations immediately.
 - Deletion is terminal in this version: there is no restore endpoint, and a second `DELETE` on the same ID returns `404` (it is not idempotent).
 - Editing after deletion returns `404`.
+- The client asks for confirmation before sending `DELETE`. The backend deletes immediately after authorization; no confirmation flag or additional endpoint is required.
+- The expense and all its split rows are removed in one transaction. Other expenses and their contributions remain unchanged. Non-members, including admins, receive `404`; another current member receives `403`.
 
 Error behavior:
 
@@ -299,6 +305,8 @@ Error behavior:
 ## Balances
 
 Balances are derived on demand from a group's non-deleted expenses. They are not stored, so an expense edit or deletion is reflected in the next balance read. Payments between members are outside the scope of iteration 2; balances here account for expenses only.
+
+The balance endpoint below is not implemented yet. The expense mutation endpoints update the authoritative expense and split rows atomically; future balance reads must derive their values from those surviving rows.
 
 ### Balance semantics
 

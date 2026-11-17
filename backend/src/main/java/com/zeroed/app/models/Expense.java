@@ -2,9 +2,12 @@ package com.zeroed.app.models;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Currency;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.annotations.Check;
 import org.hibernate.annotations.OnDelete;
@@ -91,12 +94,44 @@ public class Expense {
                 || currencyExponent != Currency.getInstance(currency).getDefaultFractionDigits()) {
             throw new IllegalStateException("Currency exponent does not match ISO 4217");
         }
-        createdAt = Instant.now();
+        createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         updatedAt = createdAt;
     }
 
     public void addSplit(User user, long amountMinor) {
         splits.add(new ExpenseSplit(this, user, amountMinor));
+    }
+
+    public void update(String description, long amountMinor, Currency currency, User paidBy, LocalDate date) {
+        this.description = description;
+        this.amountMinor = amountMinor;
+        this.currency = currency.getCurrencyCode();
+        this.currencyExponent = currency.getDefaultFractionDigits();
+        this.paidBy = paidBy;
+        this.date = date;
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        Instant nextTimestamp = updatedAt.plus(1, ChronoUnit.MICROS);
+        this.updatedAt = now.isAfter(nextTimestamp) ? now : nextTimestamp;
+    }
+
+    public void recalculateEqualSplits(List<User> participants) {
+        Map<Long, ExpenseSplit> remaining = new HashMap<>();
+        for (ExpenseSplit split : splits) remaining.put(split.getUser().getId(), split);
+        long share = amountMinor / participants.size();
+        long remainder = amountMinor % participants.size();
+        // Participants are ordered by ID so the lowest IDs receive the remainder.
+        for (int index = 0; index < participants.size(); index++) {
+            User participant = participants.get(index);
+            long amount = share + (index < remainder ? 1 : 0);
+            ExpenseSplit split = remaining.remove(participant.getId());
+            if (split == null) {
+                addSplit(participant, amount);
+            } else {
+                split.setAmountMinor(amount);
+            }
+        }
+        // Keep overlapping composite-key rows managed; only departed participants are orphans.
+        splits.removeIf(split -> remaining.containsKey(split.getUser().getId()));
     }
 
     public Long getId() { return id; }
