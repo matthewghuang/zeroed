@@ -11,11 +11,12 @@ interface GroupViewProps {
     selectedGroup: { id: number; name: string } | null;
     members: Member[]
     onOpenExpenseForm: () => void
+    onOpenExpenseList: () => void
     onMemberAdded: () => void; // to fetch members again
 }
 
 
-function GroupView({ selectedGroup, members, onOpenExpenseForm, onMemberAdded }: GroupViewProps) {
+function GroupView({ selectedGroup, members, onOpenExpenseForm, onOpenExpenseList, onMemberAdded }: GroupViewProps) {
     const [email, setEmail] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -48,6 +49,12 @@ function GroupView({ selectedGroup, members, onOpenExpenseForm, onMemberAdded }:
                 onClick={onOpenExpenseForm}
             >
                 Add Expense
+            </button>
+            <button
+                className="btn btn-outline-light"
+                onClick={onOpenExpenseList}
+            >
+                View Expenses
             </button>
             {/* Add members */}
             <form onSubmit={handleForm} className="mb-4">
