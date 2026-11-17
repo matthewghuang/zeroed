@@ -15,6 +15,7 @@ interface Expense {
     paidByUserId: number;
 }
 
+
 interface ExpenseViewProps {
     selectedGroup: { id: number; name: string } | null;
     selectedExpense: Expense | null;
