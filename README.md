@@ -92,7 +92,13 @@ The application will be accessible at http://localhost:8080.
 
 ## End-to-End Tests
 
-The two Playwright tests cover registration with usable credentials, and login with invalid-password rejection, session persistence after reload, and logout.
+The Playwright tests cover:
+
+- Registration with usable credentials.
+- Login with invalid-password rejection, session persistence after reload, and logout.
+- Group creation, automatic creator membership, and persistence after reload.
+- Adding an already-registered member and accessing the group from that member's separate browser session.
+- Expense entry with a different payer, selected currency and date, and persisted equal splits. Since the UI does not yet list expenses, this test verifies saved details through the real API as the other group member.
 
 With Docker running and Node.js 22+ installed:
 
