@@ -304,71 +304,48 @@ Error behavior:
 
 ## Balances
 
-Balances are derived on demand from a group's non-deleted expenses. They are not stored, so an expense edit or deletion is reflected in the next balance read. Payments between members are outside the scope of iteration 2; balances here account for expenses only.
+Balances are derived on demand from surviving expenses. Edits and deletions are reflected on the next read; balances and suggested transfers are not stored.
 
-The balance endpoint below is not implemented yet. The expense mutation endpoints update the authoritative expense and split rows atomically; future balance reads must derive their values from those surviving rows.
+For each expense, the payer (`paidBy`) is credited the full amount and each stored split debits its participant. The creator is not credited unless they are also the payer. Stored shares are authoritative; equal shares are not recalculated during a balance read.
 
-### Balance semantics
+`paid`, `owed`, and `net` are exact decimal strings formatted at the currency's ISO 4217 exponent. Arithmetic uses integer minor units and aggregate totals are not limited by an individual expense's amount limit. `net = paid - owed`: positive is receivable, negative is payable. Each currency is balanced independently; no exchange rates or cross-currency netting apply.
 
-All arithmetic is performed in integer cents of the group currency, so results are exact and the identity `sum(net) == 0` holds by construction.
-
-For each non-deleted expense in the group:
-
-- The payer (`paidBy`) is credited the full `amount`.
-- Each entry in `splits` debits that participant by its `amount`. A payer who is also a participant therefore nets the rest of the expense, and a payer who is not a participant nets the full amount.
-
-Per member:
-
-- `paid` = sum of `amount` over expenses where the member is the payer.
-- `owed` = sum of split amounts over expenses where the member is a participant.
-- `net` = `paid - owed`. Positive means the group owes this member money; negative means the member owes the group. Zero means settled.
-
-Suggested transfers are produced deterministically:
-
-1. Calculate net balances for all members involved in any expense, whether as a payer or participant. Include former group members, as their outstanding balances remain valid.
-
-2. Sort members by balance:
-
-- Creditors (net > 0): Descending by balance, then ascending by userId.
-- Debtors (net < 0): Descending by absolute balance, then ascending by userId.
-
-3. Settle balances greedily: Match the largest debtor with the largest creditor and create a transfer for min(debt, credit). Update both balances, remove any that reach zero, and repeat until all balances are settled.
+Suggested transfers are deterministic and advisory, not recorded payments. For each currency, initialize creditors with positive net and debtors with the absolute value of negative net. Repeatedly select the largest remaining creditor and debtor (ties by ascending user ID), transfer the smaller remainder, then reinsert any nonzero remainder into its priority queue. Zero-net members are excluded and transfer order is the order emitted by this algorithm.
 
 ### `GET /api/groups/{groupId}/balances`
 
-Return group-wide and per-member balances plus suggested settlement transfers.
-
-Suggested response: `200 OK`
+Returns all currencies represented by surviving group expenses, sorted by currency code. Each currency section includes the full roster and has monetary fields formatted to that currency's exponent.
 
 ```json
 {
   "groupId": 7,
-  "currency": "USD",
   "members": [
-    { "userId": 42, "email": "alex@example.com", "paid": "0.00", "owed": "25.00", "net": "-25.00" },
-    { "userId": 57, "email": "sam@example.com", "paid": "100.00", "owed": "25.00", "net": "75.00" },
-    { "userId": 61, "email": "jo@example.com", "paid": "0.00", "owed": "25.00", "net": "-25.00" },
-    { "userId": 88, "email": "lee@example.com", "paid": "0.00", "owed": "25.00", "net": "-25.00" }
+    { "id": 42, "email": "alex@example.com" },
+    { "id": 57, "email": "sam@example.com" }
   ],
-  "transfers": [
-    { "from": { "id": 42, "email": "alex@example.com" }, "to": { "id": 57, "email": "sam@example.com" }, "amount": "25.00" },
-    { "from": { "id": 61, "email": "jo@example.com" }, "to": { "id": 57, "email": "sam@example.com" }, "amount": "25.00" },
-    { "from": { "id": 88, "email": "lee@example.com" }, "to": { "id": 57, "email": "sam@example.com" }, "amount": "25.00" }
+  "currencies": [
+    {
+      "currency": "CAD",
+      "members": [
+        { "userId": 42, "paid": "0.00", "owed": "25.00", "net": "-25.00" },
+        { "userId": 57, "paid": "50.00", "owed": "25.00", "net": "25.00" }
+      ],
+      "transfers": [
+        { "from": { "id": 42, "email": "alex@example.com" }, "to": { "id": 57, "email": "sam@example.com" }, "amount": "25.00" }
+      ]
+    }
   ],
   "generatedAt": "2026-11-15T09:00:00Z"
 }
 ```
 
-The numbers above follow the example expense used throughout this document: Alex (42) recorded it, Sam (57) paid it, and it was split equally across four participants. Sam is therefore the creditor because he is the payer, even though Alex created the record; editing `paidByUserId` to another current member would move that credit.
-
 Semantics:
 
-- `members` lists every current group member, plus any user who appears as a payer or split participant in a surviving expense, sorted by `userId` ascending. Current members with no activity appear with `"0.00"` in all three amount fields.
-- `paid`, `owed`, and `net` use the sign convention above; `net` is the only field that can be negative.
-- `transfers` is `[]` when everyone's `net` is `"0.00"`; a group with no expenses returns all members at `"0.00"` and no transfers.
-- Transfer `from`/`to` are user references containing `id` and `email` only; no other profile data is exposed.
-- The endpoint is not paginated: a group has at most one row per member, and the response size is bounded by membership.
-- Balances are scoped to a single group and a single currency; there is no cross-group netting endpoint, and the ADMIN role gets no additional access.
+- Top-level `members` contains every current group member plus each payer and split participant in a surviving expense, sorted by ID. Former participants remain included, including participants whose stored share is zero. Expense creators are not included solely because they authored an expense. Profiles expose only `id` and `email`.
+- Every currency section repeats that roster in its `members` array, sorted by `userId`; inactive members have zero `paid`, `owed`, and `net` at that currency's precision.
+- A currency section remains present if surviving expenses in that currency net to zero, with `transfers: []`. With no expenses, `currencies` is empty and the top-level roster still contains current members.
+- `generatedAt` is the response assembly time. It is not an edit timestamp or cache key.
+- The endpoint is group-scoped and requires membership, including for admins. It does not paginate.
 
 Error behavior:
 

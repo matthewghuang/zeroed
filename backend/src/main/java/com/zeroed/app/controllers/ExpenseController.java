@@ -23,8 +23,10 @@ import com.zeroed.app.dto.CreateExpenseRequest;
 import com.zeroed.app.dto.ExpenseResponse;
 import com.zeroed.app.dto.UpdateExpenseRequest;
 import com.zeroed.app.exceptions.ExpenseRequestException;
+import com.zeroed.app.dto.GroupBalanceResponse;
 import com.zeroed.app.models.User;
 import com.zeroed.app.repositories.UserRepository;
+import com.zeroed.app.services.BalanceService;
 import com.zeroed.app.services.ExpenseService;
 
 import tools.jackson.databind.JsonNode;
@@ -33,10 +35,11 @@ import tools.jackson.databind.JsonNode;
 @RequestMapping("/api")
 public class ExpenseController {
     private final ExpenseService expenses;
+    private final BalanceService balances;
     private final UserRepository users;
-
-    public ExpenseController(ExpenseService expenses, UserRepository users) {
+    public ExpenseController(ExpenseService expenses, BalanceService balances, UserRepository users) {
         this.expenses = expenses;
+        this.balances = balances;
         this.users = users;
     }
 
@@ -57,6 +60,14 @@ public class ExpenseController {
         if (requester == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
         return ResponseEntity.ok(expenses.listExpenses(groupId, requester));
+    }
+
+    @GetMapping("/groups/{groupId}/balances")
+    public ResponseEntity<GroupBalanceResponse> getBalances(@PathVariable Long groupId,
+                                                             Authentication authentication) {
+        var requester = authenticatedUser(authentication);
+        if (requester == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok(balances.getBalances(groupId, requester));
     }
 
     @GetMapping("/expenses/{expenseId}")
