@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import GroupForm from "../components/GroupForm";
@@ -53,7 +54,7 @@ function GroupPage() {
             }
         } catch (error) {
             console.error("Failed to fetch groups", error);
-            if (error.response && error.response.status === 401) {
+            if (axios.isAxiosError(error) && error.response?.status === 401) {
                 navigate('/login');
             }
         }
