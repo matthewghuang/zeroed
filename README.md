@@ -90,6 +90,31 @@ To test the production build locally, build the Docker image using `docker build
 
 The application will be accessible at http://localhost:8080.
 
+## End-to-End Tests
+
+The two Playwright tests cover registration with usable credentials, and login with invalid-password rejection, session persistence after reload, and logout.
+
+With Docker running and Node.js 22+ installed:
+
+```bash
+cd frontend
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+On Linux, use `npx playwright install --with-deps chromium` to also install browser system dependencies.
+
+Playwright builds the production Docker image and starts a separate `zeroed-e2e` Compose project at `http://127.0.0.1:18080`. PostgreSQL 17 stores test data in temporary memory-backed storage. Tests create unique accounts and do not use the development database or ports. The first run can take several minutes to build the image; Playwright stops the test services when finished.
+
+Failure screenshots and traces are saved under `frontend/test-results/`. To view the HTML report, run `npx playwright show-report` from `frontend/`.
+
+To remove the stopped test containers and network, run this from the repository root:
+
+```bash
+docker compose -p zeroed-e2e -f compose.e2e.yaml down
+```
+
 ## Contributing
 
 1. Create a feature branch
