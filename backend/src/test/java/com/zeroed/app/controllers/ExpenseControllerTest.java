@@ -89,10 +89,10 @@ class ExpenseControllerTest {
     }
 
     @Test
-    void createsExpenseWithSeparatePayerAndExactDeterministicSplits() throws Exception {
+    void createsAndListsExpenseWithSelectedParticipantsAndExactSplits() throws Exception {
         ObjectNode request = validRequest();
         request.put("description", "  Dinner  ");
-        request.put("amount", "10.00");
+        request.put("amount", "10.01");
         request.put("paidByUserId", payer.getId());
         request.put("date", "2030-02-28");
         request.putArray("participantIds").add(third.getId()).add(creator.getId());
@@ -104,63 +104,42 @@ class ExpenseControllerTest {
         assertEquals("/api/expenses/" + id, response.headers().firstValue("Location").orElseThrow());
         assertEquals(group.getId().longValue(), body.get("groupId").longValue());
         assertEquals("Dinner", body.get("description").asString());
-        assertEquals("10.00", body.get("amount").asString());
+        assertEquals("10.01", body.get("amount").asString());
         assertEquals("CAD", body.get("currency").asString());
         assertEquals(payer.getId().longValue(), body.at("/paidBy/id").longValue());
         assertEquals(creator.getId().longValue(), body.at("/createdBy/id").longValue());
-        assertEquals("payer@example.com", body.at("/paidBy/email").asString());
-        assertEquals(2, body.get("paidBy").size());
-        assertEquals(2, body.get("createdBy").size());
+        assertEquals(json.readTree("""
+                {"id": %d, "email": "payer@example.com"}
+                """.formatted(payer.getId())), body.get("paidBy"));
+        assertEquals(json.readTree("""
+                {"id": %d, "email": "creator@example.com"}
+                """.formatted(creator.getId())), body.get("createdBy"));
         assertEquals("equal", body.get("splitType").asString());
         assertEquals("2030-02-28", body.get("date").asString());
         assertNotNull(body.get("createdAt").asString());
         assertEquals(body.get("createdAt"), body.get("updatedAt"));
-        assertEquals(creator.getId().longValue(), body.at("/splits/0/userId").longValue());
-        assertEquals("5.00", body.at("/splits/0/amount").asString());
-        assertEquals(third.getId().longValue(), body.at("/splits/1/userId").longValue());
-        assertEquals("5.00", body.at("/splits/1/amount").asString());
-        assertFalse(response.body().contains("password"));
-        assertEquals(1000L, jdbc.queryForObject("select amount_minor from expenses where id = ?", Long.class, id));
-        assertEquals(2, jdbc.queryForObject("select count(*) from expense_splits where expense_id = ?", Integer.class, id));
-        assertEquals(1000L, jdbc.queryForObject("select sum(amount_minor) from expense_splits where expense_id = ?", Long.class, id));
-    }
-
-    @Test
-    void listsExpenseDetailsWithExactAmountsAndPublicUserProfiles() throws Exception {
-        ObjectNode request = validRequest().put("description", "Museum tickets")
-                .put("amount", "10.01").put("paidByUserId", payer.getId()).put("date", "2030-02-28");
-        request.putArray("participantIds").add(payer.getId()).add(creator.getId());
-        long expenseId = createExpense(group.getId(), request);
-        Instant createdAt = Instant.parse("2030-03-01T12:00:00Z");
-        Instant updatedAt = Instant.parse("2030-03-02T12:00:00Z");
-        jdbc.update("update expenses set created_at = ?, updated_at = ? where id = ?",
-                Timestamp.from(createdAt), Timestamp.from(updatedAt), expenseId);
-
-        JsonNode result = listExpenses(client, group.getId());
-
-        assertEquals(1, result.size());
-        JsonNode expense = result.get(0);
-        assertEquals(expenseId, expense.get("id").longValue());
-        assertEquals(group.getId().longValue(), expense.get("groupId").longValue());
-        assertEquals("Museum tickets", expense.get("description").asString());
-        assertEquals("10.01", expense.get("amount").asString());
-        assertEquals("CAD", expense.get("currency").asString());
-        assertEquals("equal", expense.get("splitType").asString());
-        assertEquals("2030-02-28", expense.get("date").asString());
-        assertEquals(createdAt, Instant.parse(expense.get("createdAt").asString()));
-        assertEquals(updatedAt, Instant.parse(expense.get("updatedAt").asString()));
-        assertEquals(json.readTree("""
-                {"id": %d, "email": "payer@example.com"}
-                """.formatted(payer.getId())), expense.get("paidBy"));
-        assertEquals(json.readTree("""
-                {"id": %d, "email": "creator@example.com"}
-                """.formatted(creator.getId())), expense.get("createdBy"));
-        assertEquals(json.readTree("""
+        JsonNode splits = json.readTree("""
                 [
                   {"userId": %d, "amount": "5.01"},
                   {"userId": %d, "amount": "5.00"}
                 ]
-                """.formatted(creator.getId(), payer.getId())), expense.get("splits"));
+                """.formatted(creator.getId(), third.getId()));
+        assertEquals(splits, body.get("splits"));
+        assertFalse(response.body().contains("password"));
+        assertEquals(1001L, jdbc.queryForObject("select amount_minor from expenses where id = ?", Long.class, id));
+        assertEquals(2, jdbc.queryForObject("select count(*) from expense_splits where expense_id = ?", Integer.class, id));
+        assertEquals(1001L, jdbc.queryForObject("select sum(amount_minor) from expense_splits where expense_id = ?", Long.class, id));
+
+        Instant createdAt = Instant.parse("2030-03-01T12:00:00Z");
+        Instant updatedAt = Instant.parse("2030-03-02T12:00:00Z");
+        jdbc.update("update expenses set created_at = ?, updated_at = ? where id = ?",
+                Timestamp.from(createdAt), Timestamp.from(updatedAt), id);
+        ObjectNode expected = (ObjectNode) body.deepCopy();
+        expected.put("createdAt", createdAt.toString());
+        expected.put("updatedAt", updatedAt.toString());
+        JsonNode result = listExpenses(client, group.getId());
+        assertEquals(1, result.size());
+        assertEquals(expected, result.get(0));
     }
 
     @Test
@@ -238,11 +217,11 @@ class ExpenseControllerTest {
 
     @ParameterizedTest
     @MethodSource("currencies")
-    void preservesCurrencyPrecisionAndDistributesRemainders(String currency, String amount,
-                                                           long minor, int exponent, String first,
-                                                           String second) throws Exception {
+    void defaultsToAllCurrentMembersWithExactCurrencySplits(String currency, String amount,
+                                                            long minor, int exponent, String first,
+                                                            String second) throws Exception {
         ObjectNode request = validRequest().put("currency", currency).put("amount", amount);
-        request.putArray("participantIds").add(third.getId()).add(payer.getId()).add(creator.getId());
+        request.remove("participantIds");
         LocalDate before = LocalDate.now(ZoneOffset.UTC);
         var response = post(client, expensePath(group.getId()), json.writeValueAsString(request));
         LocalDate after = LocalDate.now(ZoneOffset.UTC);
@@ -253,13 +232,22 @@ class ExpenseControllerTest {
         assertEquals(creator.getId().longValue(), body.at("/paidBy/id").longValue());
         LocalDate date = LocalDate.parse(body.get("date").asString());
         assertTrue(date.equals(before) || date.equals(after));
-        assertEquals(first, body.at("/splits/0/amount").asString());
-        assertEquals(second, body.at("/splits/1/amount").asString());
-        assertEquals(second, body.at("/splits/2/amount").asString());
+        JsonNode splits = json.readTree("""
+                [
+                  {"userId": %d, "amount": "%s"},
+                  {"userId": %d, "amount": "%s"},
+                  {"userId": %d, "amount": "%s"}
+                ]
+                """.formatted(creator.getId(), first, payer.getId(), second, third.getId(), second));
+        assertEquals(splits, body.get("splits"));
         long id = body.get("id").longValue();
         assertEquals(minor, jdbc.queryForObject("select amount_minor from expenses where id = ?", Long.class, id));
         assertEquals(exponent, jdbc.queryForObject("select currency_exponent from expenses where id = ?", Integer.class, id));
         assertEquals(minor, jdbc.queryForObject("select sum(amount_minor) from expense_splits where expense_id = ?", Long.class, id));
+        JsonNode result = listExpenses(client, group.getId());
+        assertEquals(1, result.size());
+        assertEquals(id, result.get(0).get("id").longValue());
+        assertEquals(splits, result.get(0).get("splits"));
     }
 
     static Stream<Arguments> currencies() {
@@ -301,7 +289,7 @@ class ExpenseControllerTest {
                 Arguments.of("date", "\"2026-1-01\""), Arguments.of("date", "\"2026-01-01T00:00:00Z\""),
                 Arguments.of("paidByUserId", "null"), Arguments.of("paidByUserId", "1.0"),
                 Arguments.of("paidByUserId", "\"1\""), Arguments.of("paidByUserId", "999999999999999999999"),
-                Arguments.of("participantIds", null), Arguments.of("participantIds", "[]"),
+                Arguments.of("participantIds", "null"), Arguments.of("participantIds", "[]"),
                 Arguments.of("participantIds", "[1,1]"), Arguments.of("participantIds", "[null]"),
                 Arguments.of("participantIds", "[1.0]"), Arguments.of("participantIds", "[\"1\"]"));
     }

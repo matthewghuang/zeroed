@@ -196,7 +196,7 @@ NOTE: Custom splitting is currently not supported. It will come in a later itera
 | `currency`       | yes      | Uppercase ISO 4217 code recognized by Java's `Currency` with a minor-unit exponent from 0 through 4. Codes without a defined minor unit, including `XXX` and `XTS`, are unsupported. |
 | `date`           | no       | Valid `YYYY-MM-DD`; defaults to the current UTC date. Future dates are allowed (pre-logging a planned expense).                                                                      |
 | `paidByUserId`   | no       | Integer user ID; must be a current member of the group. Defaults to the authenticated creator when omitted. Independent of `participantIds`: the payer need not appear in the split. |
-| `participantIds` | yes      | Non-empty array of unique integers; each must be a current member of the group; at most the current member count. The payer may appear or not appear.                                |
+| `participantIds` | no       | Non-empty array of unique integers; each must be a current member of the group; at most the current member count. When omitted, all current group members participate. Explicit `null` and empty arrays are invalid. The payer may appear or not appear. |
 
 Equal splits use integer minor units. Participants are sorted by ascending user ID; each receives `amountMinor / participantCount`, and the first `amountMinor % participantCount` participants receive one additional minor unit. Split amounts always sum exactly to the expense amount; zero shares are allowed. Responses list splits in this same order.
 
