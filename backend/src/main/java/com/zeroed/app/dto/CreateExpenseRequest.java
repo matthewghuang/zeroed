@@ -93,23 +93,27 @@ public record CreateExpenseRequest(String description, long amountMinor, Currenc
             if (payer == null) errors.put("paidByUserId", "must be an integer user ID");
         }
 
-        JsonNode participants = body.get("participantIds");
-        List<Long> ids = new ArrayList<>();
-        Set<Long> seen = new HashSet<>();
-        if (participants == null || !participants.isArray() || participants.isEmpty()) {
-            errors.put("participantIds", "must be a non-empty array of unique integer user IDs");
-        } else {
-            for (JsonNode participant : participants) {
-                Long id = userId(participant);
-                if (id == null || !seen.add(id)) {
-                    errors.put("participantIds", "must be a non-empty array of unique integer user IDs");
-                } else {
-                    ids.add(id);
+        // Null represents omission; an explicitly supplied JSON null remains invalid.
+        List<Long> ids = null;
+        if (body.has("participantIds")) {
+            JsonNode participants = body.get("participantIds");
+            ids = new ArrayList<>();
+            Set<Long> seen = new HashSet<>();
+            if (!participants.isArray() || participants.isEmpty()) {
+                errors.put("participantIds", "must be a non-empty array of unique integer user IDs");
+            } else {
+                for (JsonNode participant : participants) {
+                    Long id = userId(participant);
+                    if (id == null || !seen.add(id)) {
+                        errors.put("participantIds", "must be a non-empty array of unique integer user IDs");
+                    } else {
+                        ids.add(id);
+                    }
                 }
             }
         }
         if (!errors.isEmpty()) throw new ExpenseRequestException("validation_failed", errors);
-        ids.sort(Long::compareTo);
+        if (ids != null) ids.sort(Long::compareTo);
         return new CreateExpenseRequest(description, amountMinor, currency, date, payer, ids);
     }
 

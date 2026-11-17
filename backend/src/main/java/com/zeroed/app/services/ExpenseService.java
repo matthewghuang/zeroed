@@ -50,13 +50,17 @@ public class ExpenseService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
         Map<Long, User> members = new HashMap<>();
         for (User user : memberships.findMembersByGroupId(groupId)) members.put(user.getId(), user);
+        // Omission means every current member; explicit selections are already sorted by the parser.
+        List<Long> participantIds = request.participantIds() == null
+                ? members.keySet().stream().sorted().toList()
+                : request.participantIds();
 
         Long payerId = request.paidByUserId() == null ? creator.getId() : request.paidByUserId();
         Map<String, String> errors = new LinkedHashMap<>();
         if (!members.containsKey(payerId)) {
             errors.put("paidByUserId", "must reference a current member of the group");
         }
-        if (!request.participantIds().stream().allMatch(members::containsKey)) {
+        if (!participantIds.stream().allMatch(members::containsKey)) {
             errors.put("participantIds", "must contain only current group members");
         }
         if (!errors.isEmpty()) throw new ExpenseRequestException("validation_failed", errors);
@@ -64,12 +68,12 @@ public class ExpenseService {
         LocalDate date = request.date() == null ? LocalDate.now(ZoneOffset.UTC) : request.date();
         Expense expense = new Expense(group, request.description(), request.amountMinor(), request.currency(),
                 members.get(payerId), creator, date);
-        int count = request.participantIds().size();
+        int count = participantIds.size();
         long share = request.amountMinor() / count;
         long remainder = request.amountMinor() % count;
-        // The request parser sorts IDs; the lowest IDs receive one extra minor unit each.
+        // Both resolved paths are sorted; the lowest IDs receive one extra minor unit each.
         for (int index = 0; index < count; index++) {
-            expense.addSplit(members.get(request.participantIds().get(index)), share + (index < remainder ? 1 : 0));
+            expense.addSplit(members.get(participantIds.get(index)), share + (index < remainder ? 1 : 0));
         }
         return ExpenseResponse.from(expenses.saveAndFlush(expense));
     }
