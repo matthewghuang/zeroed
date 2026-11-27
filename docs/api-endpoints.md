@@ -8,7 +8,7 @@
 - All group endpoints require an authenticated user. A user may access only groups they belong to, except where an explicitly agreed admin rule applies.
 - Never return passwords, password hashes, session IDs, or other secrets in JSON.
 - Suggested errors: `400 Bad Request` for invalid input, `401 Unauthorized` when not signed in, `403 Forbidden` when signed in but not permitted, `404 Not Found` when the requested resource does not exist or should not be disclosed, and `409 Conflict` for duplicates.
-- Money amounts are exact decimal strings, never JSON numbers, with exactly the currency's ISO 4217 exponent in fractional digits (no decimal point for exponent 0). Original request amounts have 1–9 integer digits and must be represented exactly. Converted totals may be larger, must fit signed 64-bit minor units, and explicitly use decimal `HALF_UP` rounding to base precision. Balances aggregate integer minor units without an individual-expense limit. Binary floating point never touches a monetary value.
+- Money amounts are exact decimal strings, never JSON numbers. Requests accept 1–9 integer digits and up to the currency's ISO 4217 exponent in fractional digits (no decimal point for exponent 0): `"50"`, `"50.0"` and `"50.00"` all represent 50 BWP. Responses always format amounts at the full currency precision. Converted totals may be larger, must fit signed 64-bit minor units, and explicitly use decimal `HALF_UP` rounding to base precision. Balances aggregate integer minor units without an individual-expense limit. Binary floating point never touches a monetary value.
 - Every money figure carries an explicit ISO 4217 code, and currencies are never mixed inside one figure.
 
 ## Authentication
@@ -212,7 +212,7 @@ NOTE: Custom splitting is currently not supported. It will come in a later itera
 | Field            | Required | Rules                                                                                                                                                                                |
 | ---------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `description`    | yes      | Trimmed; 1–200 characters after trimming; not blank.                                                                                                                                 |
-| `amount`         | yes      | Exact decimal string with 1–9 integer digits and exactly the currency's ISO 4217 minor-unit exponent in fractional digits (no decimal point for exponent 0); strictly positive. |
+| `amount`         | yes      | Exact decimal string with 1–9 integer digits and up to the currency's ISO 4217 minor-unit exponent in fractional digits (no decimal point for exponent 0); strictly positive. Missing fractional digits are zero-padded, never rounded; excess fractional digits are rejected. |
 | `currency`       | yes      | Uppercase ISO 4217 code recognized by Java's `Currency` with a minor-unit exponent from 0 through 4. Codes without a defined minor unit, including `XXX` and `XTS`, are unsupported. |
 | `date`           | no       | Valid `YYYY-MM-DD`; defaults to the current UTC date. Future dates are allowed (pre-logging a planned expense).                                                                      |
 | `paidByUserId`   | no       | Integer user ID; must be a current member of the group. Defaults to the authenticated creator when omitted. Independent of `participantIds`: the payer need not appear in the split. |
@@ -231,7 +231,7 @@ Validation failures return `400 Bad Request`:
   "error": "validation_failed",
   "message": "Request body is invalid.",
   "fields": {
-    "amount": "must have 1–9 integer digits and exactly 2 fractional digits",
+    "amount": "must have 1–9 integer digits and at most 2 fractional digits",
     "paidByUserId": "must reference a current member of the group",
     "participantIds": "must contain only current group members"
   }

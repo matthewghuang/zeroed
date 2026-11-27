@@ -11,6 +11,13 @@ interface Member {
 
 type Quote = Pick<Expense, "baseCurrency" | "convertedAmount" | "exchangeRate" | "rateDate" | "amount" | "currency">;
 
+function requestError(error: unknown, fallback: string) {
+  if (!axios.isAxiosError<{ message?: string; fields?: Record<string, string> }>(error)) return fallback;
+  const data = error.response?.data;
+  return Object.entries(data?.fields ?? {}).map(([field, message]) => `${field}: ${message}`).join("; ")
+    || data?.message || fallback;
+}
+
 interface ExpenseFormProps {
   groupId: number;
   baseCurrency: string;
@@ -54,10 +61,7 @@ function ExpenseForm({ groupId, baseCurrency, members, expense, onExpenseCreated
         const response = await api.post<Quote>(path, { amount, currency });
         if (quoteSequence.current === sequence) setQuote({ ...response.data, amount, currency });
       } catch (error: unknown) {
-        const message = axios.isAxiosError<{ message?: string }>(error)
-          ? error.response?.data?.message
-          : undefined;
-        if (quoteSequence.current === sequence) setQuoteError(message || "Unable to get an exchange-rate quote. Please retry.");
+        if (quoteSequence.current === sequence) setQuoteError(requestError(error, "Unable to get an exchange-rate quote. Please retry."));
       } finally {
         if (quoteSequence.current === sequence) setQuoteLoading(false);
       }
@@ -92,10 +96,7 @@ function ExpenseForm({ groupId, baseCurrency, members, expense, onExpenseCreated
         onExpenseCreated();
       }
     } catch (error: unknown) {
-      const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message
-        : undefined;
-      setErrorMessage(message || "Expense could not be saved. Your entries are still here.");
+      setErrorMessage(requestError(error, "Expense could not be saved. Your entries are still here."));
     }
   };
 

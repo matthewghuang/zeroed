@@ -19,7 +19,7 @@ final class FrankfurterStub implements AutoCloseable {
         }
         server.createContext("/v2/rate/", exchange -> {
             String[] pair = exchange.getRequestURI().getPath().substring("/v2/rate/".length()).split("/");
-            String rate = Map.of("USD", "1.4", "EUR", "1.6", "JPY", "0.01", "KWD", "4.5", "CLF", "50").get(pair[0]);
+            String rate = Map.of("USD", "1.4", "EUR", "1.6", "JPY", "0.01", "KWD", "4.5", "CLF", "50", "BWP", "0.1").get(pair[0]);
             int status = unavailable || rate == null || !pair[1].equals("CAD") ? 503 : 200;
             byte[] body = (status == 200
                     ? "{\"date\":\"2020-01-02\",\"base\":\"" + pair[0] + "\",\"quote\":\"CAD\",\"rate\":" + rate + "}"

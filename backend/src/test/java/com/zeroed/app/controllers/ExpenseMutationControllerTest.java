@@ -260,10 +260,10 @@ class ExpenseMutationControllerTest {
         // Represents an expense locked on a previous day, unlike today's provider quote of 1.4.
         jdbc.update("update expenses set exchange_rate = 1.37, converted_amount_minor = 1370 where id = ?", id);
         jdbc.update("update expense_splits set amount_minor = 685 where expense_id = ?", id);
-        var preview = mutate(client, "POST", path(created) + "/quote", "{\"amount\":\"20.00\",\"currency\":\"USD\"}");
+        var preview = mutate(client, "POST", path(created) + "/quote", "{\"amount\":\"20\",\"currency\":\"USD\"}");
         assertEquals(200, preview.statusCode(), preview.body());
         assertEquals("27.40", json.readTree(preview.body()).get("convertedAmount").asString());
-        var response = mutate(client, "PATCH", path(created), "{\"amount\":\"20.00\"}");
+        var response = mutate(client, "PATCH", path(created), "{\"amount\":\"20\"}");
         assertEquals(200, response.statusCode(), response.body());
         JsonNode updated = json.readTree(response.body());
         assertEquals("27.40", updated.get("convertedAmount").asString());

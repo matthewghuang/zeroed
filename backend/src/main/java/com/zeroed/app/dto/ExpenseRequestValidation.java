@@ -22,9 +22,9 @@ final class ExpenseRequestValidation {
     private static final Pattern CURRENCY_CODE = Pattern.compile("[A-Z]{3}");
     private static final Pattern DATE = Pattern.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}");
     private static final Pattern[] AMOUNTS = {
-        Pattern.compile("[0-9]{1,9}"), Pattern.compile("[0-9]{1,9}\\.[0-9]"),
-        Pattern.compile("[0-9]{1,9}\\.[0-9]{2}"), Pattern.compile("[0-9]{1,9}\\.[0-9]{3}"),
-        Pattern.compile("[0-9]{1,9}\\.[0-9]{4}")
+        Pattern.compile("[0-9]{1,9}"), Pattern.compile("[0-9]{1,9}(?:\\.[0-9])?"),
+        Pattern.compile("[0-9]{1,9}(?:\\.[0-9]{1,2})?"), Pattern.compile("[0-9]{1,9}(?:\\.[0-9]{1,3})?"),
+        Pattern.compile("[0-9]{1,9}(?:\\.[0-9]{1,4})?")
     };
 
     private ExpenseRequestValidation() {}
@@ -74,7 +74,7 @@ final class ExpenseRequestValidation {
         if (amount == null || currency == null) return 0;
         int exponent = currency.getDefaultFractionDigits();
         if (!AMOUNTS[exponent].matcher(amount).matches()) {
-            errors.put("amount", "must have 1–9 integer digits and exactly " + exponent + " fractional digits");
+            errors.put("amount", "must have 1–9 integer digits and at most " + exponent + " fractional digits");
             return 0;
         }
         long amountMinor = new BigDecimal(amount).movePointRight(exponent).longValueExact();
