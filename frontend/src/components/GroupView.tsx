@@ -7,9 +7,8 @@ interface Member {
     id: number;
     email: string;
 }
-
 interface GroupViewProps {
-    selectedGroup: { id: number; name: string } | null;
+    selectedGroup: { id: number; name: string; baseCurrency: string } | null;
     members: Member[]
     onOpenExpenseForm: () => void
     onOpenExpenseList: () => void
@@ -44,7 +43,7 @@ function GroupView({ selectedGroup, members, onOpenExpenseForm, onOpenExpenseLis
 
     return (
         <div className="container-fluid card border border-secondary text-white mb-3 shadow-lg p-4 h-100 overflow-auto" style={{ backgroundColor: '#342835' }}>
-            <h1 className="text-center mb-4">{selectedGroup?.name}</h1>
+            <h1 className="text-center mb-4">{selectedGroup?.name} {selectedGroup && <small className="fs-6">({selectedGroup.baseCurrency})</small>}</h1>
             <button
                 className="btn btn-outline-light"
                 onClick={onOpenExpenseForm}
@@ -82,7 +81,7 @@ function GroupView({ selectedGroup, members, onOpenExpenseForm, onOpenExpenseLis
                     </li>
                 ))}
             </ul>
-            {selectedGroup && <GroupBalance groupId={selectedGroup.id} />}
+            {selectedGroup && <GroupBalance groupId={selectedGroup.id} baseCurrency={selectedGroup.baseCurrency} />}
         </div>
     )
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import api from "../api";
+import currencies from "../currencies";
 import LoginNotif from "./ErrorNotif";
 
 interface GroupFormProps {
@@ -9,6 +10,7 @@ interface GroupFormProps {
 
 function GroupForm({ onSwitchToView, onGroupCreated }: GroupFormProps) {
   const [groupName, setGroupName] = useState("");
+  const [baseCurrency, setBaseCurrency] = useState("CAD");
 
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -19,7 +21,7 @@ function GroupForm({ onSwitchToView, onGroupCreated }: GroupFormProps) {
     try {
       setErrorMessage("");
       await api.get("/api/auth/csrf");
-      const response = await api.post("/api/groups", { name: groupName });
+      const response = await api.post("/api/groups", { name: groupName, baseCurrency });
 
       if (onGroupCreated) {
         onGroupCreated();
@@ -43,7 +45,7 @@ function GroupForm({ onSwitchToView, onGroupCreated }: GroupFormProps) {
     >
       <form onSubmit={handleForm}>
         <div className="form-group">
-          <label htmlFor="text" className="form-label">
+          <label htmlFor="groupName" className="form-label">
             Group Name:
           </label>
           <input
@@ -54,6 +56,18 @@ function GroupForm({ onSwitchToView, onGroupCreated }: GroupFormProps) {
             placeholder="group name..."
             onChange={(e) => setGroupName(e.target.value)}
           ></input>
+        <div className="form-group mt-3">
+          <label htmlFor="baseCurrency" className="form-label">Base currency:</label>
+          <select
+            id="baseCurrency"
+            className="form-select"
+            value={baseCurrency}
+            onChange={(e) => setBaseCurrency(e.target.value)}
+            required
+          >
+            {currencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+          </select>
+        </div>
         </div>
         <div className="text-center mt-3 mb-3">
           <button type="submit" className="btn btn-secondary text-center">
