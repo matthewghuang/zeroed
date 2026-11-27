@@ -18,10 +18,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.zeroed.app.dto.CreateExpenseRequest;
 import com.zeroed.app.dto.ExpenseResponse;
 import com.zeroed.app.dto.UpdateExpenseRequest;
+import com.zeroed.app.dto.ConversionQuote;
+import com.zeroed.app.dto.ConversionQuoteRequest;
 import com.zeroed.app.exceptions.ExpenseRequestException;
 import com.zeroed.app.dto.GroupBalanceResponse;
 import com.zeroed.app.models.User;
@@ -51,6 +54,22 @@ public class ExpenseController {
 
         ExpenseResponse expense = expenses.createExpense(groupId, CreateExpenseRequest.from(body), creator);
         return ResponseEntity.created(URI.create("/api/expenses/" + expense.id())).body(expense);
+    }
+
+    @PostMapping("/groups/{groupId}/expenses/quote")
+    public ResponseEntity<ConversionQuote> quoteExpense(@PathVariable Long groupId, @RequestBody JsonNode body,
+                                                        Authentication authentication) {
+        var requester = authenticatedUser(authentication);
+        if (requester == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok(expenses.quoteExpense(groupId, ConversionQuoteRequest.from(body), requester));
+    }
+
+    @PostMapping("/expenses/{expenseId}/quote")
+    public ResponseEntity<ConversionQuote> quoteUpdate(@PathVariable Long expenseId, @RequestBody JsonNode body,
+                                                       Authentication authentication) {
+        var requester = authenticatedUser(authentication);
+        if (requester == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok(expenses.quoteUpdate(expenseId, ConversionQuoteRequest.from(body), requester));
     }
     
     @GetMapping("/groups/{groupId}/expenses")
@@ -114,5 +133,12 @@ public class ExpenseController {
     public ResponseEntity<RequestError> malformedJson(HttpMessageNotReadableException exception) {
         return ResponseEntity.badRequest().body(new RequestError("validation_failed", "Request body is invalid.",
                 Map.of("body", "must be valid JSON")));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<RequestError> statusError(ResponseStatusException exception) {
+        return ResponseEntity.status(exception.getStatusCode()).body(new RequestError(
+                exception.getStatusCode().value() == 503 ? "exchange_rate_unavailable" : "request_failed",
+                exception.getReason(), Map.of()));
     }
 }

@@ -1,30 +1,15 @@
 import { useEffect, useState, } from 'react';
-import api from "../api";
+import api, { type Expense } from "../api";
 import ErrorNotif from './ErrorNotif';
-
-interface Member {
-    id: number;
-    email: string;
-}
-
-interface Expense {
-    id: number;
-    description: string;
-    amount: number;
-    currency: string;
-    date: string;
-    paidByUserId: number;
-}
 
 interface ExpenseListProps {
     groupId: number;
-    members: Member[];
     groupName: string;
     onSelectExpense: (expense: Expense) => void;
 }
 
 
-function ExpenseList({ groupId, groupName, members, onSelectExpense  }: ExpenseListProps) {
+function ExpenseList({ groupId, groupName, onSelectExpense }: ExpenseListProps) {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [errorMessage, setErrorMessage] = useState("");
 
@@ -48,11 +33,6 @@ function ExpenseList({ groupId, groupName, members, onSelectExpense  }: ExpenseL
         fetchExpenses();
     }, [groupId])
 
-    const getMemberEmail = (userId: number) => {
-        const member = members.find(m => m.id === userId);
-        return member ? member.email : "Unknown Member";
-    }
-
     return (
         <div className="container-fluid card border border-secondary text-white mb-3 shadow-lg p-4 h-100" style={{ backgroundColor: '#342835' }}>
             <h1 className="text-center mb-4">{groupName}</h1>
@@ -65,19 +45,18 @@ function ExpenseList({ groupId, groupName, members, onSelectExpense  }: ExpenseL
             ) : (
                 <ul className='list-group list-group-flush bg-transparent'>
                     {expenses.map((expense) => (
-                        <li 
-                            key={expense.id} className='list-group-item align-items-center'
-                            onClick={() => onSelectExpense(expense)}
-                        >
-                            <div>
-                                <h5 className='mb-1'>{expense.description}</h5>
-                                <small>Paid by: {getMemberEmail(expense.paidByUserId)} {expense.date ? `on ${expense.date}` : ''}</small>
-                            </div>
-                            <div className='text-end'>
-                                <span className="fs-5 fw-bold">
-                                    {Number(expense.amount).toFixed(2)} {expense.currency}
-                                </span>
-                            </div>
+                        <li key={expense.id} className='list-group-item align-items-center'>
+                            <button type="button" className="btn btn-link text-start text-decoration-none text-reset w-100 p-0" onClick={() => onSelectExpense(expense)}>
+                                <div>
+                                    <h5 className='mb-1'>{expense.description}</h5>
+                                    <small>Paid by: {expense.paidBy.email} {expense.date ? `on ${expense.date}` : ''}</small>
+                                </div>
+                                <div className='text-end'>
+                                    <span className="fs-5 fw-bold">{expense.amount} {expense.currency}</span>
+                                    <div>{expense.convertedAmount} {expense.baseCurrency}</div>
+                                    {expense.currency !== expense.baseCurrency && <small>Rate {expense.exchangeRate}, effective {expense.rateDate}</small>}
+                                </div>
+                            </button>
                         </li>
                     )
                 )}

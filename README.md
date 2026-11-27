@@ -10,7 +10,7 @@ The goal is to simplify shared expense management by automating calculations, tr
 - **Group Management:** Create groups, invite members, and manage shared expenses.
 - **Expense Splitting:** Split bills equally, by percentage, ratio, or exact amount.
 - **Balance & Settlement:** Track debts, calculate balances, and record settlements.
-- **Multi-Currency Support:** Convert expenses using real-time exchange rates.
+- **Multi-Currency Support:** Lock Frankfurter daily reference rates per expense; track balances and settlement suggestions in the group's base currency.
 - **Automatic Categorization:** Classify expenses using natural language processing.
 - **Notifications:** Reminders for outstanding balances and expense updates.
 

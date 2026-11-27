@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.URI;
@@ -16,6 +17,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Currency;
+import org.junit.jupiter.api.AfterAll;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -53,6 +58,16 @@ import tools.jackson.databind.node.ObjectNode;
     "spring.session.jdbc.initialize-schema=always"
 })
 class ExpenseControllerTest {
+    private static final FrankfurterStub RATES = new FrankfurterStub();
+
+    @DynamicPropertySource
+    static void rateProperties(DynamicPropertyRegistry registry) {
+        registry.add("zeroed.exchange-rates.base-url", RATES::baseUrl);
+    }
+
+    @AfterAll
+    static void stopRates() { RATES.close(); }
+
     private static final String PASSWORD = "expense-test-password";
     private static final String HASH = new BCryptPasswordEncoder().encode(PASSWORD);
 
@@ -81,7 +96,7 @@ class ExpenseControllerTest {
         payer = users.saveAndFlush(new User("payer@example.com", HASH));
         third = users.saveAndFlush(new User("third@example.com", HASH));
         outsider = users.saveAndFlush(new User("outsider@example.com", HASH));
-        group = groups.saveAndFlush(new Group("Trip", creator));
+        group = groups.saveAndFlush(new Group("Trip", creator, Currency.getInstance("CAD")));
         for (User member : new User[] {creator, payer, third}) {
             memberships.saveAndFlush(new GroupMembership(member, group));
         }
@@ -155,7 +170,7 @@ class ExpenseControllerTest {
 
     @Test
     void listsOnlyExpensesFromTheRequestedGroup() throws Exception {
-        Group otherGroup = groups.saveAndFlush(new Group("Other trip", creator));
+        Group otherGroup = groups.saveAndFlush(new Group("Other trip", creator, Currency.getInstance("CAD")));
         memberships.saveAndFlush(new GroupMembership(creator, otherGroup));
         createExpense(otherGroup.getId(), validRequest());
         long requestedExpenseId = createExpense(group.getId(), validRequest());
@@ -220,6 +235,10 @@ class ExpenseControllerTest {
     void splitsExplicitParticipantsWithExactCurrencySplits(String currency, String amount,
                                                           long minor, int exponent, String first,
                                                           String second) throws Exception {
+        group = groups.saveAndFlush(new Group("Currency precision", creator, Currency.getInstance(currency)));
+        for (User member : new User[] {creator, payer, third}) {
+            memberships.saveAndFlush(new GroupMembership(member, group));
+        }
         ObjectNode request = validRequest().put("currency", currency).put("amount", amount);
         request.putArray("participantIds").add(creator.getId()).add(payer.getId()).add(third.getId());
         LocalDate before = LocalDate.now(ZoneOffset.UTC);
@@ -227,7 +246,7 @@ class ExpenseControllerTest {
         LocalDate after = LocalDate.now(ZoneOffset.UTC);
         assertEquals(201, response.statusCode(), response.body());
         JsonNode body = json.readTree(response.body());
-        assertEquals(amount, body.get("amount").asString());
+        assertEquals(BigDecimal.valueOf(minor, exponent).toPlainString(), body.get("amount").asString());
         assertEquals(currency, body.get("currency").asString());
         assertEquals(creator.getId().longValue(), body.at("/paidBy/id").longValue());
         LocalDate date = LocalDate.parse(body.get("date").asString());
@@ -256,6 +275,9 @@ class ExpenseControllerTest {
                 Arguments.of("JPY", "1", 1L, 0, "1", "0"),
                 Arguments.of("KWD", "0.001", 1L, 3, "0.001", "0.000"),
                 Arguments.of("CLF", "0.0001", 1L, 4, "0.0001", "0.0000"),
+                Arguments.of("CAD", "1.0", 100L, 2, "0.34", "0.33"),
+                Arguments.of("KWD", "1.2", 1200L, 3, "0.400", "0.400"),
+                Arguments.of("CLF", "0.01", 100L, 4, "0.0034", "0.0033"),
                 Arguments.of("CAD", "999999999.99", 99999999999L, 2, "333333333.33", "333333333.33"));
     }
 
@@ -280,7 +302,7 @@ class ExpenseControllerTest {
                 Arguments.of("description", "\"" + "a".repeat(201) + "\""),
                 Arguments.of("amount", null), Arguments.of("amount", "null"),
                 Arguments.of("amount", "0.01"), Arguments.of("amount", "\"0.00\""),
-                Arguments.of("amount", "\"-1.00\""), Arguments.of("amount", "\"1.0\""),
+                Arguments.of("amount", "\"-1.00\""), Arguments.of("amount", "\"1.\""),
                 Arguments.of("amount", "\"1.001\""), Arguments.of("amount", "\"1e2\""),
                 Arguments.of("amount", "\"1000000000.00\""),
                 Arguments.of("currency", null), Arguments.of("currency", "\"cad\""),
@@ -333,7 +355,8 @@ class ExpenseControllerTest {
 
     @Test
     void rejectsImmutableAndUnknownFields() throws Exception {
-        for (String field : new String[] {"id", "groupId", "createdBy", "splitType", "splits", "extra"}) {
+        for (String field : new String[] {"id", "groupId", "createdBy", "splitType", "splits",
+                "baseCurrency", "convertedAmount", "exchangeRate", "rateDate", "extra"}) {
             ObjectNode request = validRequest().put(field, "injected");
             var response = post(client, expensePath(group.getId()), json.writeValueAsString(request));
             assertEquals(400, response.statusCode(), response.body());
@@ -384,6 +407,62 @@ class ExpenseControllerTest {
         JsonNode result = json.readTree(response.body());
         assertTrue(result.isArray(), response.body());
         return result;
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"50", "50.0", "50.00"})
+    void previewsAndPersistsForeignCurrencyWithBalancedBaseSplits(String amount) throws Exception {
+        var preview = post(client, expensePath(group.getId()) + "/quote",
+                json.writeValueAsString(json.createObjectNode().put("amount", amount).put("currency", "BWP")));
+        assertEquals(200, preview.statusCode(), preview.body());
+        JsonNode quote = json.readTree(preview.body());
+        assertEquals("5.00", quote.get("convertedAmount").asString());
+        assertEquals("0.1", quote.get("exchangeRate").asString());
+        assertEquals("2020-01-02", quote.get("rateDate").asString());
+
+        ObjectNode request = validRequest().put("amount", amount).put("currency", "BWP");
+        request.remove("participantIds");
+        long id = createExpense(group.getId(), request);
+        JsonNode expense = listExpenses(client, group.getId()).get(0);
+        for (String field : new String[]{"convertedAmount", "exchangeRate", "rateDate", "baseCurrency"}) {
+            assertEquals(quote.get(field), expense.get(field), field);
+        }
+        assertEquals("50.00", expense.get("amount").asString());
+        assertEquals("BWP", expense.get("currency").asString());
+        assertEquals("1.67", expense.at("/splits/0/amount").asString());
+        assertEquals("1.67", expense.at("/splits/1/amount").asString());
+        assertEquals("1.66", expense.at("/splits/2/amount").asString());
+        assertEquals(500L, jdbc.queryForObject(
+                "select sum(amount_minor) from expense_splits where expense_id = ?", Long.class, id));
+        assertEquals(5000L, jdbc.queryForObject("select amount_minor from expenses where id = ?", Long.class, id));
+        assertEquals(500L, jdbc.queryForObject("select converted_amount_minor from expenses where id = ?", Long.class, id));
+    }
+
+    @Test
+    void unavailableRateRejectsQuoteAndCreationWithoutPersisting() throws Exception {
+        // CHF is uncached and this fixture has no quote for it.
+        for (String suffix : new String[]{"/quote", ""}) {
+            ObjectNode request = suffix.isEmpty() ? validRequest().put("currency", "CHF")
+                    : json.createObjectNode().put("amount", "10.00").put("currency", "CHF");
+            var response = post(client, expensePath(group.getId()) + suffix, json.writeValueAsString(request));
+            assertEquals(503, response.statusCode(), response.body());
+            assertEquals("exchange_rate_unavailable", json.readTree(response.body()).get("error").asString());
+            assertTrue(json.readTree(response.body()).get("message").asString().contains("try again"));
+        }
+        assertNoExpenses();
+    }
+
+    @Test
+    void groupCreationPersistsSelectedBaseCurrency() throws Exception {
+        var response = post(client, "/api/groups", "{\"name\":\"Japan\",\"baseCurrency\":\"JPY\"}");
+        assertEquals(201, response.statusCode(), response.body());
+        JsonNode created = json.readTree(response.body());
+        long groupId = created.get("id").longValue();
+        assertEquals("JPY", created.get("baseCurrency").asString());
+        assertEquals("JPY", groups.findById(groupId).orElseThrow().getBaseCurrency());
+        long id = createExpense(groupId, validRequest().put("currency", "JPY").put("amount", "101"));
+        assertEquals(101L, jdbc.queryForObject("select converted_amount_minor from expenses where id = ?", Long.class, id));
+        assertEquals("JPY", listExpenses(client, groupId).get(0).get("baseCurrency").asString());
     }
 
     private ObjectNode validRequest() {

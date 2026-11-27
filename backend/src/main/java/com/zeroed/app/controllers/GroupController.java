@@ -49,7 +49,7 @@ public class GroupController {
         }
 
         List<GroupResponse> groups = groupService.getGroupsForUser(currentUser).stream()
-                .map(group -> new GroupResponse(group.getId(), group.getName(), group.getCreatedAt()))
+                .map(group -> new GroupResponse(group.getId(), group.getName(), group.getCreatedAt(), group.getBaseCurrency()))
                 .toList();
         return ResponseEntity.ok(groups);
     }
@@ -109,11 +109,10 @@ public class GroupController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        //call GroupService.createGroup(request.name(), currentUser)
-        Group group = groupService.createGroup(request.name(), currentUser);
+        Group group = groupService.createGroup(request.name(), request.baseCurrency(), currentUser);
 
         // return 201 with the new group
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new GroupResponse(group.getId(), group.getName(), group.getCreatedAt()));
+                .body(new GroupResponse(group.getId(), group.getName(), group.getCreatedAt(), group.getBaseCurrency()));
     }
 }

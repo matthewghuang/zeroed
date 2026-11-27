@@ -14,9 +14,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterAll;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -50,6 +54,16 @@ import tools.jackson.databind.node.ObjectNode;
     "spring.session.jdbc.initialize-schema=always"
 })
 class BalanceControllerTest {
+    private static final FrankfurterStub RATES = new FrankfurterStub();
+
+    @DynamicPropertySource
+    static void rateProperties(DynamicPropertyRegistry registry) {
+        registry.add("zeroed.exchange-rates.base-url", RATES::baseUrl);
+    }
+
+    @AfterAll
+    static void stopRates() { RATES.close(); }
+
     private static final String PASSWORD = "balance-test-password";
     private static final String HASH = new BCryptPasswordEncoder().encode(PASSWORD);
 
@@ -76,25 +90,26 @@ class BalanceControllerTest {
             char name = (char) ('a' + i);
             people[i] = users.saveAndFlush(new User(name + "@example.com", HASH));
         }
-        group = groups.saveAndFlush(new Group("Trip", people[0]));
+        group = groups.saveAndFlush(new Group("Trip", people[0], Currency.getInstance("CAD")));
         for (int i = 0; i < 5; i++) memberships.saveAndFlush(new GroupMembership(people[i], group));
         client = signedIn(people[0]);
     }
 
     @Test
-    void emptyGroupReturnsCurrentPublicRosterWithoutCurrencies() throws Exception {
+    void emptyGroupReturnsCurrentPublicRosterAndZeroBaseCurrencyLedger() throws Exception {
         JsonNode actual = balances(signedIn(people[4]), group);
         assertEquals(group.getId().longValue(), actual.get("groupId").longValue());
         assertEquals(rosterProfiles(0, 1, 2, 3, 4), profiles(actual.get("members")));
-        assertEquals(List.of(), currencyCodes(actual));
+        assertEquals(List.of("CAD"), currencyCodes(actual));
+        assertCurrency(actual, "CAD", new long[5], new long[5], 2, new long[][]{});
         assertTimestamp(actual);
     }
 
     @Test
-    void keepsHistoricalParticipantsAndSeparatesCurrenciesAndGroups() throws Exception {
+    void convertsCurrenciesAndKeepsHistoricalParticipantsIsolatedByGroup() throws Exception {
         createExpense(group, "CAD", "10.01", people[2], people[1], people[0]);
         createExpense(group, "JPY", "3", people[0], people[2]);
-        Group other = groups.saveAndFlush(new Group("Other", people[0]));
+        Group other = groups.saveAndFlush(new Group("Other", people[0], Currency.getInstance("CAD")));
         memberships.saveAndFlush(new GroupMembership(people[0], other));
         memberships.saveAndFlush(new GroupMembership(people[5], other));
         createExpense(other, "EUR", "99.00", people[5], people[0]);
@@ -103,11 +118,9 @@ class BalanceControllerTest {
 
         JsonNode actual = balances(signedIn(people[4]), group);
         assertEquals(rosterProfiles(0, 1, 2, 3, 4), profiles(actual.get("members")));
-        assertCurrency(actual, "CAD", new long[]{0, 0, 1001, 0, 0}, new long[]{501, 500, 0, 0, 0}, 2,
-                new long[][]{{0, 2, 501}, {1, 2, 500}});
-        assertCurrency(actual, "JPY", new long[]{3, 0, 0, 0, 0}, new long[]{0, 0, 3, 0, 0}, 0,
-                new long[][]{{2, 0, 3}});
-        assertEquals(List.of("CAD", "JPY"), currencyCodes(actual));
+        assertCurrency(actual, "CAD", new long[]{3, 0, 1001, 0, 0}, new long[]{501, 500, 3, 0, 0}, 2,
+                new long[][]{{1, 2, 500}, {0, 2, 498}});
+        assertEquals(List.of("CAD"), currencyCodes(actual));
         assertFalse(actual.toString().contains("f@example.com"));
         assertTimestamp(actual);
     }
@@ -135,6 +148,8 @@ class BalanceControllerTest {
     @ParameterizedTest
     @CsvSource({"CAD,0.01,2", "JPY,1,0", "KWD,0.001,3", "CLF,0.0001,4"})
     void formatsPrecisionAndIncludesZeroShareParticipants(String currency, String amount, int exponent) throws Exception {
+        group = groups.saveAndFlush(new Group("Precision", people[0], Currency.getInstance(currency)));
+        for (int i = 0; i < 5; i++) memberships.saveAndFlush(new GroupMembership(people[i], group));
         createExpense(group, currency, amount, people[2], people[1], people[0]);
         long minor = 1;
         JsonNode actual = balances(client, group);
@@ -170,15 +185,15 @@ class BalanceControllerTest {
         var updated = mutate(client, "PATCH", "/api/expenses/" + expenseId, json.writeValueAsString(patch));
         assertEquals(200, updated.statusCode(), updated.body());
         JsonNode afterEdit = balances(client, group);
-        assertCurrency(afterEdit, "EUR", new long[]{0, 0, 1201, 0, 0}, new long[]{601, 0, 600, 0, 0}, 2,
-                new long[][]{{0, 2, 601}});
+        assertCurrency(afterEdit, "CAD", new long[]{0, 0, 1922, 0, 0}, new long[]{961, 0, 961, 0, 0}, 2,
+                new long[][]{{0, 2, 961}});
         var rejected = mutate(client, "PATCH", "/api/expenses/" + expenseId, "{\"amount\":\"0.00\"}");
         assertEquals(400, rejected.statusCode(), rejected.body());
         assertEquals(withoutTimestamp(afterEdit), withoutTimestamp(balances(client, group)));
         var deleted = mutate(client, "DELETE", "/api/expenses/" + expenseId, null);
         assertEquals(204, deleted.statusCode(), deleted.body());
         JsonNode empty = balances(client, group);
-        assertEquals(List.of(), currencyCodes(empty));
+        assertEquals(List.of("CAD"), currencyCodes(empty));
         assertEquals(rosterProfiles(0, 1, 2, 3, 4), profiles(empty.get("members")));
     }
 

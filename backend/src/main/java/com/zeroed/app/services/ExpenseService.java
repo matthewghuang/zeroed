@@ -15,6 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+
+import com.zeroed.app.dto.ConversionQuote;
+import com.zeroed.app.dto.ConversionQuoteRequest;
 import com.zeroed.app.dto.CreateExpenseRequest;
 import com.zeroed.app.dto.ExpenseResponse;
 import com.zeroed.app.dto.UpdateExpenseRequest;
@@ -36,12 +39,14 @@ public class ExpenseService {
     private final ExpenseRepository expenses;
     private final GroupRepository groups;
     private final GroupMembershipRepository memberships;
+    private final CurrencyConversionService conversions;
 
     public ExpenseService(ExpenseRepository expenses, GroupRepository groups,
-                          GroupMembershipRepository memberships) {
+                          GroupMembershipRepository memberships, CurrencyConversionService conversions) {
         this.expenses = expenses;
         this.groups = groups;
         this.memberships = memberships;
+        this.conversions = conversions;
     }
 
     @Transactional
@@ -70,16 +75,42 @@ public class ExpenseService {
         if (!errors.isEmpty()) throw new ExpenseRequestException("validation_failed", errors);
 
         LocalDate date = request.date() == null ? LocalDate.now(ZoneOffset.UTC) : request.date();
+        ConversionQuote conversion = conversions.quote(request.amountMinor(), request.currency(),
+                Currency.getInstance(group.getBaseCurrency()));
         Expense expense = new Expense(group, request.description(), request.amountMinor(), request.currency(),
-                members.get(payerId), creator, date);
+                members.get(payerId), creator, date, conversion);
         int count = participantIds.size();
-        long share = request.amountMinor() / count;
-        long remainder = request.amountMinor() % count;
+        long share = conversion.convertedAmountMinor() / count;
+        long remainder = conversion.convertedAmountMinor() % count;
         // Both resolved paths are sorted; the lowest IDs receive one extra minor unit each.
         for (int index = 0; index < count; index++) {
             expense.addSplit(members.get(participantIds.get(index)), share + (index < remainder ? 1 : 0));
         }
         return ExpenseResponse.from(expenses.saveAndFlush(expense));
+    }
+
+    @Transactional(readOnly = true)
+    public ConversionQuote quoteExpense(Long groupId, ConversionQuoteRequest request, User requester) {
+        if (!memberships.existsById(new GroupMembershipId(requester.getId(), groupId))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
+        }
+        var group = groups.findById(groupId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+        return conversions.quote(request.amountMinor(), request.currency(), Currency.getInstance(group.getBaseCurrency()));
+    }
+
+    @Transactional
+    public ConversionQuote quoteUpdate(Long expenseId, ConversionQuoteRequest request, User requester) {
+        Expense expense = findForMutation(expenseId, requester);
+        return conversionForUpdate(expense, request.amountMinor(), request.currency());
+    }
+
+    private ConversionQuote conversionForUpdate(Expense expense, long amountMinor, Currency currency) {
+        Currency target = Currency.getInstance(expense.getGroup().getBaseCurrency());
+        if (!currency.getCurrencyCode().equals(expense.getCurrency())) {
+            return conversions.quote(amountMinor, currency, target);
+        }
+        return conversions.convert(amountMinor, currency, target, expense.getExchangeRate(), expense.getRateDate());
     }
 
     @Transactional(readOnly = true)
@@ -126,6 +157,9 @@ public class ExpenseService {
                 ? Currency.getInstance(expense.getCurrency()) : request.currency();
         long amountMinor = request.amountMinor(expense.getAmountMinor(), expense.getCurrencyExponent(), currency);
         User payer = request.paidByUserId() == null ? expense.getPaidBy() : members.get(request.paidByUserId());
+        if (request.amount() != null || request.currency() != null) {
+            expense.applyConversion(conversionForUpdate(expense, amountMinor, currency));
+        }
         expense.update(request.description() == null ? expense.getDescription() : request.description(),
                 amountMinor, currency, payer, request.date() == null ? expense.getDate() : request.date());
 

@@ -24,7 +24,8 @@ public record CreateExpenseRequest(String description, long amountMinor, Currenc
         LocalDate date = body.has("date") ? ExpenseRequestValidation.date(body.get("date"), errors) : null;
         Long payer = body.has("paidByUserId")
                 ? ExpenseRequestValidation.paidByUserId(body.get("paidByUserId"), errors) : null;
-        List<Long> ids = ExpenseRequestValidation.participantIds(body.get("participantIds"), errors);
+        List<Long> ids = body.has("participantIds")
+                ? ExpenseRequestValidation.participantIds(body.get("participantIds"), errors) : null;
         ExpenseRequestValidation.throwIfInvalid(errors);
         return new CreateExpenseRequest(description, amountMinor, currency, date, payer, ids);
     }

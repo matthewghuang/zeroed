@@ -34,9 +34,10 @@ interface GroupBalanceResponse {
 
 interface GroupBalanceProps {
     groupId: number;
+    baseCurrency: string;
 }
 
-function GroupBalance({ groupId }: GroupBalanceProps) {
+function GroupBalance({ groupId, baseCurrency }: GroupBalanceProps) {
     const [balance, setBalance] = useState<GroupBalanceResponse | null>(null);
     const [error, setError] = useState(false);
 
@@ -60,7 +61,7 @@ function GroupBalance({ groupId }: GroupBalanceProps) {
 
     return (
         <section className="border-top border-secondary mt-4 pt-3" aria-labelledby="group-balance-heading">
-            <h4 id="group-balance-heading" className="border-bottom border-secondary pb-2 mb-3">Balances</h4>
+            <h4 id="group-balance-heading" className="border-bottom border-secondary pb-2 mb-3">Balances ({baseCurrency})</h4>
             {error ? (
                 <p className="alert alert-danger">Failed to load group balances.</p>
             ) : balance === null ? (
@@ -69,9 +70,8 @@ function GroupBalance({ groupId }: GroupBalanceProps) {
                 <p className="text-white-50">No expenses recorded yet.</p>
             ) : (
                 <div className="d-flex flex-column gap-3">
-                    {balance.currencies.map((currency) => (
+                    {balance.currencies.filter((section) => section.currency === baseCurrency).map((currency) => (
                         <section key={currency.currency} className="border border-secondary rounded p-3">
-                            <h5 className="mb-3">{currency.currency}</h5>
                             <div className="table-responsive">
                                 <table className="table table-dark table-sm align-middle mb-3">
                                     <thead>
@@ -104,14 +104,14 @@ function GroupBalance({ groupId }: GroupBalanceProps) {
                             </div>
                             <h6>Suggested transfers</h6>
                             {currency.transfers.length === 0 ? (
-                                <p className="text-white-50 mb-0">Everyone is settled in {currency.currency}.</p>
+                                <p className="text-white-50 mb-0">Everyone is settled.</p>
                             ) : (
                                 <ul className="list-group list-group-flush">
                                     {currency.transfers.map((transfer, index) => (
                                         <li key={`${transfer.from.id}-${transfer.to.id}-${index}`}
                                             className="list-group-item bg-transparent text-white border-secondary px-0">
                                             <span>{transfer.from.email} pays {transfer.to.email}</span>
-                                            <strong className="float-end">{transfer.amount} {currency.currency}</strong>
+                                            <strong className="float-end">{transfer.amount}</strong>
                                         </li>
                                     ))}
                                 </ul>

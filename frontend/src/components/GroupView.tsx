@@ -7,9 +7,8 @@ interface Member {
     id: number;
     email: string;
 }
-
 interface GroupViewProps {
-    selectedGroup: { id: number; name: string } | null;
+    selectedGroup: { id: number; name: string; baseCurrency: string } | null;
     members: Member[]
     onOpenExpenseForm: () => void
     onOpenExpenseList: () => void
@@ -82,7 +81,7 @@ function GroupView({ selectedGroup, members, onOpenExpenseForm, onOpenExpenseLis
                     </li>
                 ))}
             </ul>
-            {selectedGroup && <GroupBalance groupId={selectedGroup.id} />}
+            {selectedGroup && <GroupBalance groupId={selectedGroup.id} baseCurrency={selectedGroup.baseCurrency} />}
         </div>
     )
 }

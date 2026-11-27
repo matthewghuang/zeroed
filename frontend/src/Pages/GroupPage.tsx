@@ -9,21 +9,13 @@ import MainHeader from '../components/MainHeader';
 import bgImage from '../assets/zeroedBG.png';
 import GroupView from '../components/GroupView';
 import ErrorNotif from '../components/ErrorNotif';
-import api from "../api";
+import api, { type Expense } from "../api";
 
 // properties for each group in group list view
 export interface Group {
     id: number;
     name: string;
-}
-
-interface Expense {
-    id: number;
-    description: string;
-    amount: number;
-    currency: string;
-    date: string;
-    paidByUserId: number;
+    baseCurrency: string;
 }
 
 interface Member {
@@ -188,7 +180,10 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                         <GroupView
                             selectedGroup={selectedGroup}
                             members={members}
-                            onOpenExpenseForm={() => setCurrentView('createExpense')}
+                            onOpenExpenseForm={() => {
+                                setSelectedExpense(null);
+                                setCurrentView('createExpense');
+                            }}
                             onOpenExpenseList={() => setCurrentView('expenseList')}
                             onMemberAdded={() => fetchMembers(selectedGroup.id)}
                         />
@@ -205,15 +200,19 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                     {currentView === 'createExpense' && selectedGroup && (
                         <ExpenseForm
                             groupId={selectedGroup.id}
+                            baseCurrency={selectedGroup.baseCurrency}
                             members={members}
-                            onSwitchToView={() => setCurrentView('groupView')}
+                            expense={selectedExpense}
+                            onExpenseCreated={(updatedExpense) => {
+                                if (updatedExpense) setSelectedExpense(updatedExpense);
+                                setCurrentView(selectedExpense ? 'expenseView' : 'groupView');
+                            }}
                         />
                     )}
                     {currentView === 'expenseList' && selectedGroup && (
                         <ExpenseList
                             groupId={selectedGroup.id}
                             groupName={selectedGroup.name}
-                            members={members}
                             onSelectExpense={(expense) => {
                                 setSelectedExpense(expense);
                                 setCurrentView('expenseView');
@@ -225,7 +224,10 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                             selectedGroup={selectedGroup}
                             selectedExpense={selectedExpense}
                             members={members}
-                            onOpenExpenseEdit={() => setCurrentView('createExpense')}
+                            onOpenExpenseEdit={(expense) => {
+                                setSelectedExpense(expense);
+                                setCurrentView('createExpense');
+                            }}
                             onBackToList={() => setCurrentView('expenseList')}
                         />
                     )}
