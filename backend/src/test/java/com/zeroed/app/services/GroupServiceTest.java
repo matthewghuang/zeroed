@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Currency;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -111,7 +112,7 @@ class GroupServiceTest {
     private Group groupForMemberAddition() {
         when(currentUser.getId()).thenReturn(42L);
         when(groupMembershipRepository.existsById(new GroupMembershipId(42L, 7L))).thenReturn(true);
-        Group group = new Group("Trip", currentUser);
+        Group group = new Group("Trip", currentUser, Currency.getInstance("CAD"));
         ReflectionTestUtils.setField(group, "id", 7L);
         when(groupRepository.findById(7L)).thenReturn(Optional.of(group));
         return group;
@@ -148,8 +149,8 @@ class GroupServiceTest {
         when(admin.getRole()).thenReturn(UserRole.ADMIN);
         User otherUser = new User("other@example.com", "encoded-password");
         List<Group> allGroups = List.of(
-                new Group("Vancouver Trip", otherUser),
-                new Group("Housemates", otherUser));
+                new Group("Vancouver Trip", otherUser, Currency.getInstance("CAD")),
+                new Group("Housemates", otherUser, Currency.getInstance("CAD")));
         when(groupRepository.findAll()).thenReturn(allGroups);
         GroupService service = new GroupService(groupRepository, groupMembershipRepository, userRepository);
 
@@ -185,5 +186,14 @@ class GroupServiceTest {
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verifyNoInteractions(groupMembershipRepository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"cad", "ZZZ", "XXX", "", "US"})
+    void createGroupRejectsUnsupportedBaseCurrency(String code) {
+        GroupService service = new GroupService(groupRepository, groupMembershipRepository, userRepository);
+        assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                () -> service.createGroup("Trip", code, currentUser)).getStatusCode());
+        verifyNoInteractions(groupRepository, groupMembershipRepository);
     }
 }

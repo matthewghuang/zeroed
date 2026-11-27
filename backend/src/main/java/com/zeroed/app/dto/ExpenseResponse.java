@@ -12,7 +12,8 @@ import com.zeroed.app.models.User;
 
 public record ExpenseResponse(Long id, Long groupId, String description, String amount, String currency,
                               GroupMemberResponse paidBy, GroupMemberResponse createdBy, String splitType,
-                              List<Split> splits, LocalDate date, Instant createdAt, Instant updatedAt) {
+                              List<Split> splits, LocalDate date, Instant createdAt, Instant updatedAt,
+                              String baseCurrency, String convertedAmount, String exchangeRate, LocalDate rateDate) {
     public record Split(Long userId, String amount) {}
 
     public static ExpenseResponse from(Expense expense) {
@@ -24,8 +25,11 @@ public record ExpenseResponse(Long id, Long groupId, String description, String 
                 expense.getSplits().stream()
                         .sorted(Comparator.comparing(split -> split.getUser().getId()))
                         .map(split -> new Split(split.getUser().getId(),
-                                format(split.getAmountMinor(), exponent))).toList(),
-                expense.getDate(), expense.getCreatedAt(), expense.getUpdatedAt());
+                                format(split.getAmountMinor(), expense.getBaseCurrencyExponent()))).toList(),
+                expense.getDate(), expense.getCreatedAt(), expense.getUpdatedAt(),
+                expense.getGroup().getBaseCurrency(),
+                format(expense.getConvertedAmountMinor(), expense.getBaseCurrencyExponent()),
+                expense.getExchangeRate().stripTrailingZeros().toPlainString(), expense.getRateDate());
     }
 
     private static GroupMemberResponse member(User user) {

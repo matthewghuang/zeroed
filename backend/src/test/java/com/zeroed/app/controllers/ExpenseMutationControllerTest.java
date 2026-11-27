@@ -12,7 +12,11 @@ import java.net.http.HttpResponse;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Currency;
 
+import org.junit.jupiter.api.AfterAll;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +47,16 @@ import tools.jackson.databind.node.ObjectNode;
     "spring.session.jdbc.initialize-schema=always"
 })
 class ExpenseMutationControllerTest {
+    private static final FrankfurterStub RATES = new FrankfurterStub();
+
+    @DynamicPropertySource
+    static void rateProperties(DynamicPropertyRegistry registry) {
+        registry.add("zeroed.exchange-rates.base-url", RATES::baseUrl);
+    }
+
+    @AfterAll
+    static void stopRates() { RATES.close(); }
+
     private static final String PASSWORD = "expense-mutation-password";
     private static final String HASH = new BCryptPasswordEncoder().encode(PASSWORD);
 
@@ -71,7 +85,7 @@ class ExpenseMutationControllerTest {
         payer = users.saveAndFlush(new User("payer@example.com", HASH));
         third = users.saveAndFlush(new User("third@example.com", HASH));
         outsider = users.saveAndFlush(new User("outsider@example.com", HASH));
-        group = groups.saveAndFlush(new Group("Trip", creator));
+        group = groups.saveAndFlush(new Group("Trip", creator, Currency.getInstance("CAD")));
         for (User member : new User[] {creator, payer, third}) {
             memberships.saveAndFlush(new GroupMembership(member, group));
         }
@@ -105,17 +119,15 @@ class ExpenseMutationControllerTest {
         assertEquals("2030-02-28", updated.get("date").asString());
         assertEquals(third.getId().longValue(), updated.at("/paidBy/id").longValue());
         assertEquals(json.readTree("""
-                [{"userId": %d, "amount": "6.01"}, {"userId": %d, "amount": "6.00"}]
+                [{"userId": %d, "amount": "9.61"}, {"userId": %d, "amount": "9.61"}]
                 """.formatted(creator.getId(), third.getId())), updated.get("splits"));
         assertEquals(updated, read(client, path(original)));
         assertEquals(updated, read(client, expensePath()).get(0));
         assertEquals(2, jdbc.queryForObject("select count(*) from expense_splits where expense_id = ?", Integer.class, id));
-        assertEquals(1201L, jdbc.queryForObject("select sum(amount_minor) from expense_splits where expense_id = ?", Long.class, id));
-        assertEquals(0L, net(creator, "CAD"));
+        assertEquals(1922L, jdbc.queryForObject("select sum(amount_minor) from expense_splits where expense_id = ?", Long.class, id));
+        assertEquals(-961L, net(creator, "CAD"));
         assertEquals(0L, net(payer, "CAD"));
-        assertEquals(-601L, net(creator, "EUR"));
-        assertEquals(0L, net(payer, "EUR"));
-        assertEquals(601L, net(third, "EUR"));
+        assertEquals(961L, net(third, "CAD"));
     }
 
     @Test
@@ -241,6 +253,35 @@ class ExpenseMutationControllerTest {
         assertEquals(404, mutate(client, "DELETE", path(deleted), null).statusCode());
     }
 
+    @Test
+    void amountEditsAndPreviewUseHistoricalLockedRateWhileCurrencyChangesRequote() throws Exception {
+        JsonNode created = createExpense(validRequest().put("currency", "USD"));
+        long id = created.get("id").longValue();
+        // Represents an expense locked on a previous day, unlike today's provider quote of 1.4.
+        jdbc.update("update expenses set exchange_rate = 1.37, converted_amount_minor = 1370 where id = ?", id);
+        jdbc.update("update expense_splits set amount_minor = 685 where expense_id = ?", id);
+        var preview = mutate(client, "POST", path(created) + "/quote", "{\"amount\":\"20.00\",\"currency\":\"USD\"}");
+        assertEquals(200, preview.statusCode(), preview.body());
+        assertEquals("27.40", json.readTree(preview.body()).get("convertedAmount").asString());
+        var response = mutate(client, "PATCH", path(created), "{\"amount\":\"20.00\"}");
+        assertEquals(200, response.statusCode(), response.body());
+        JsonNode updated = json.readTree(response.body());
+        assertEquals("27.40", updated.get("convertedAmount").asString());
+        assertEquals("1.37", updated.get("exchangeRate").asString());
+        assertEquals(created.get("rateDate"), updated.get("rateDate"));
+        assertEquals(1370L, net(payer, "CAD"));
+
+        response = mutate(client, "PATCH", path(created), "{\"currency\":\"EUR\"}");
+        assertEquals(200, response.statusCode(), response.body());
+        assertEquals("32.00", json.readTree(response.body()).get("convertedAmount").asString());
+        response = mutate(client, "PATCH", path(created), "{\"currency\":\"CHF\"}");
+        assertEquals(503, response.statusCode(), response.body());
+        assertEquals("EUR", read(client, path(created)).get("currency").asString());
+        response = mutate(client, "PATCH", path(created), "{\"description\":\"Still editable\"}");
+        assertEquals(200, response.statusCode(), response.body());
+        assertEquals("32.00", json.readTree(response.body()).get("convertedAmount").asString());
+    }
+
     private ObjectNode validRequest() {
         ObjectNode request = json.createObjectNode().put("description", "Dinner").put("amount", "10.00")
                 .put("currency", "CAD").put("paidByUserId", payer.getId()).put("date", "2030-01-01");
@@ -260,9 +301,9 @@ class ExpenseMutationControllerTest {
 
     // Balances are derived, not stored: assert the credit/debit inputs in integer minor units.
     private long net(User user, String currency) {
-        long paid = jdbc.queryForObject("select coalesce(sum(amount_minor), 0) from expenses where group_id = ? and paid_by_user_id = ? and currency = ?",
+        long paid = jdbc.queryForObject("select coalesce(sum(converted_amount_minor), 0) from expenses e join groups g on g.id = e.group_id where e.group_id = ? and e.paid_by_user_id = ? and g.base_currency = ?",
                 Long.class, group.getId(), user.getId(), currency);
-        long owed = jdbc.queryForObject("select coalesce(sum(s.amount_minor), 0) from expense_splits s join expenses e on e.id = s.expense_id where e.group_id = ? and s.user_id = ? and e.currency = ?",
+        long owed = jdbc.queryForObject("select coalesce(sum(s.amount_minor), 0) from expense_splits s join expenses e on e.id = s.expense_id join groups g on g.id = e.group_id where e.group_id = ? and s.user_id = ? and g.base_currency = ?",
                 Long.class, group.getId(), user.getId(), currency);
         return paid - owed;
     }

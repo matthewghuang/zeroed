@@ -1,6 +1,7 @@
 package com.zeroed.app.models;
 
 import java.time.Instant;
+import java.util.Currency;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,6 +31,9 @@ public class Group {
 	@Column(name = "name", nullable = false, length = 1024)
 	private String name;
 
+	@Column(name = "base_currency", nullable = false, updatable = false, length = 3)
+	private String baseCurrency;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
@@ -41,9 +45,10 @@ public class Group {
 
 	}
 
-	public Group(String name, User creator) {
+	public Group(String name, User creator, Currency baseCurrency) {
 		this.name = name;
 		this.createdBy = creator;
+		this.baseCurrency = baseCurrency.getCurrencyCode();
 	}
 
 	@PrePersist
@@ -59,6 +64,10 @@ public class Group {
 
 	public String getName() {
 		return this.name;
+	}
+
+	public String getBaseCurrency() {
+		return this.baseCurrency;
 	}
 
 	public void setName(String name) {

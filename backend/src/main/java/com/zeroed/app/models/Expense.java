@@ -1,5 +1,6 @@
 package com.zeroed.app.models;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -26,9 +27,11 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
+
+import com.zeroed.app.dto.ConversionQuote;
 @Entity
 @Table(name = "expenses")
-@Check(constraints = "amount_minor > 0 and currency_exponent between 0 and 4 and split_type = 'EQUAL'")
+@Check(constraints = "amount_minor > 0 and currency_exponent between 0 and 4 and split_type = 'EQUAL' and converted_amount_minor >= 0 and exchange_rate > 0")
 public class Expense {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,6 +52,15 @@ public class Expense {
 
     @Column(name = "currency_exponent", nullable = false)
     private int currencyExponent;
+
+    @Column(name = "converted_amount_minor", nullable = false)
+    private long convertedAmountMinor;
+
+    @Column(name = "exchange_rate", nullable = false, precision = 38, scale = 18)
+    private BigDecimal exchangeRate;
+
+    @Column(name = "rate_date", nullable = false)
+    private LocalDate rateDate;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "paid_by_user_id", nullable = false)
@@ -77,7 +89,7 @@ public class Expense {
     protected Expense() {}
 
     public Expense(Group group, String description, long amountMinor, Currency currency,
-                   User paidBy, User createdBy, LocalDate date) {
+                   User paidBy, User createdBy, LocalDate date, ConversionQuote conversion) {
         this.group = group;
         this.description = description;
         this.amountMinor = amountMinor;
@@ -86,6 +98,7 @@ public class Expense {
         this.paidBy = paidBy;
         this.createdBy = createdBy;
         this.date = date;
+        applyConversion(conversion);
     }
 
     @PrePersist
@@ -96,6 +109,15 @@ public class Expense {
         }
         createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         updatedAt = createdAt;
+    }
+
+    public void applyConversion(ConversionQuote conversion) {
+        if (!group.getBaseCurrency().equals(conversion.baseCurrency())) {
+            throw new IllegalArgumentException("Conversion must use the group's base currency");
+        }
+        convertedAmountMinor = conversion.convertedAmountMinor();
+        exchangeRate = new BigDecimal(conversion.exchangeRate());
+        rateDate = conversion.rateDate();
     }
 
     public void addSplit(User user, long amountMinor) {
@@ -117,8 +139,8 @@ public class Expense {
     public void recalculateEqualSplits(List<User> participants) {
         Map<Long, ExpenseSplit> remaining = new HashMap<>();
         for (ExpenseSplit split : splits) remaining.put(split.getUser().getId(), split);
-        long share = amountMinor / participants.size();
-        long remainder = amountMinor % participants.size();
+        long share = convertedAmountMinor / participants.size();
+        long remainder = convertedAmountMinor % participants.size();
         // Participants are ordered by ID so the lowest IDs receive the remainder.
         for (int index = 0; index < participants.size(); index++) {
             User participant = participants.get(index);
@@ -140,6 +162,12 @@ public class Expense {
     public long getAmountMinor() { return amountMinor; }
     public String getCurrency() { return currency; }
     public int getCurrencyExponent() { return currencyExponent; }
+    public long getConvertedAmountMinor() { return convertedAmountMinor; }
+    public BigDecimal getExchangeRate() { return exchangeRate; }
+    public LocalDate getRateDate() { return rateDate; }
+    public int getBaseCurrencyExponent() {
+        return Currency.getInstance(group.getBaseCurrency()).getDefaultFractionDigits();
+    }
     public User getPaidBy() { return paidBy; }
     public User getCreatedBy() { return createdBy; }
     public String getSplitType() { return splitType; }

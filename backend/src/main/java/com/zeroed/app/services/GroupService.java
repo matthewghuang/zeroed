@@ -1,5 +1,6 @@
 package com.zeroed.app.services;
 
+import java.util.Currency;
 import java.util.List;
 import java.util.Locale;
 
@@ -33,13 +34,25 @@ public class GroupService {
     }
 
     @Transactional
-    public Group createGroup(String name, User creator) {
+    public Group createGroup(String name, String baseCurrency, User creator) {
         if (name == null || name.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A group name is required, please enter a group name.");
         }
 
-        // save a new group
-        Group group = groupRepository.save(new Group(name.trim(), creator));
+        Currency currency;
+        try {
+            if (baseCurrency == null || !baseCurrency.matches("[A-Z]{3}")) {
+                throw new IllegalArgumentException();
+            }
+            currency = Currency.getInstance(baseCurrency);
+            if (currency.getDefaultFractionDigits() < 0 || currency.getDefaultFractionDigits() > 4) {
+                throw new IllegalArgumentException();
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Base currency must be a supported uppercase ISO 4217 code");
+        }
+        Group group = groupRepository.save(new Group(name.trim(), creator, currency));
 
         // add the creator to the group's membership, (the group now has its generated id, which GroupMembership needs)
         groupMembershipRepository.save(new GroupMembership(creator, group));

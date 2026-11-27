@@ -61,13 +61,13 @@ class GroupControllerTest {
     void createGroupReturnsCreatedGroupResponse() {
         User user = signedInUser();
         Group createdGroup = group(7L, "Vancouver Trip");
-        when(groupService.createGroup("Vancouver Trip", user)).thenReturn(createdGroup);
+        when(groupService.createGroup("Vancouver Trip", "CAD", user)).thenReturn(createdGroup);
 
-        var response = controller.createGroup(new CreateGroupRequest("Vancouver Trip"), authentication());
+        var response = controller.createGroup(new CreateGroupRequest("Vancouver Trip", "CAD"), authentication());
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(new GroupResponse(7L, "Vancouver Trip", CREATED_AT), response.getBody());
-        verify(groupService).createGroup("Vancouver Trip", user);
+        assertEquals(new GroupResponse(7L, "Vancouver Trip", CREATED_AT, "CAD"), response.getBody());
+        verify(groupService).createGroup("Vancouver Trip", "CAD", user);
     }
 
     @Test
@@ -80,8 +80,8 @@ class GroupControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(List.of(
-                new GroupResponse(7L, "Vancouver Trip", CREATED_AT),
-                new GroupResponse(8L, "Housemates", CREATED_AT)), response.getBody());
+                new GroupResponse(7L, "Vancouver Trip", CREATED_AT, "CAD"),
+                new GroupResponse(8L, "Housemates", CREATED_AT, "CAD")), response.getBody());
         verify(groupService).getGroupsForUser(user);
     }
 
@@ -97,8 +97,8 @@ class GroupControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(List.of(
-                new GroupResponse(7L, "Vancouver Trip", CREATED_AT),
-                new GroupResponse(8L, "Housemates", CREATED_AT)), response.getBody());
+                new GroupResponse(7L, "Vancouver Trip", CREATED_AT, "CAD"),
+                new GroupResponse(8L, "Housemates", CREATED_AT, "CAD")), response.getBody());
         verify(groupService).getGroupsForUser(admin);
     }
 
@@ -116,7 +116,7 @@ class GroupControllerTest {
     @ParameterizedTest
     @MethodSource("unauthorizedAuthentications")
     void createGroupRejectsUnauthorizedAuthentication(Authentication authentication) {
-        var response = controller.createGroup(new CreateGroupRequest("Vancouver Trip"), authentication);
+        var response = controller.createGroup(new CreateGroupRequest("Vancouver Trip", "CAD"), authentication);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertNull(response.getBody());
@@ -137,7 +137,7 @@ class GroupControllerTest {
     void createGroupRejectsSessionWhoseUserNoLongerExists() {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
-        var response = controller.createGroup(new CreateGroupRequest("Vancouver Trip"), authentication());
+        var response = controller.createGroup(new CreateGroupRequest("Vancouver Trip", "CAD"), authentication());
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertNull(response.getBody());
@@ -251,6 +251,7 @@ class GroupControllerTest {
         when(group.getId()).thenReturn(id);
         when(group.getName()).thenReturn(name);
         when(group.getCreatedAt()).thenReturn(CREATED_AT);
+        when(group.getBaseCurrency()).thenReturn("CAD");
         return group;
     }
 
