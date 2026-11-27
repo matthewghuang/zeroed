@@ -1,0 +1,53 @@
+.expense-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+  background: rgb(0 0 0 / 65%);
+}
+
+.expense-modal-dialog {
+  width: min(100%, 42rem);
+  max-height: 100%;
+  overflow-y: auto;
+  border: 1px solid #716475;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  color: white;
+  background: #211824;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 45%);
+}
+
+.expense-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.expense-modal-dialog .group-container {
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+@media (max-width: 575.98px) {
+  .expense-modal-backdrop {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .expense-modal-dialog {
+    width: 100%;
+    max-height: 100%;
+    min-height: 100%;
+    border: 0;
+    border-radius: 0;
+    padding: 1rem;
+  }
+}

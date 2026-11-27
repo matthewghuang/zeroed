@@ -35,9 +35,11 @@ interface GroupBalanceResponse {
 interface GroupBalanceProps {
     groupId: number;
     baseCurrency: string;
+    refreshKey: number;
 }
 
-function GroupBalance({ groupId, baseCurrency }: GroupBalanceProps) {
+function GroupBalance({ groupId, baseCurrency, refreshKey }: GroupBalanceProps) {
+
     const [balance, setBalance] = useState<GroupBalanceResponse | null>(null);
     const [error, setError] = useState(false);
 
@@ -57,7 +59,7 @@ function GroupBalance({ groupId, baseCurrency }: GroupBalanceProps) {
         return () => {
             current = false;
         };
-    }, [groupId]);
+    }, [groupId, refreshKey]);
 
     return (
         <section className="border-top border-secondary mt-4 pt-3" aria-labelledby="group-balance-heading">
