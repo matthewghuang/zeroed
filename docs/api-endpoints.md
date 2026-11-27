@@ -8,7 +8,7 @@
 - All group endpoints require an authenticated user. A user may access only groups they belong to, except where an explicitly agreed admin rule applies.
 - Never return passwords, password hashes, session IDs, or other secrets in JSON.
 - Suggested errors: `400 Bad Request` for invalid input, `401 Unauthorized` when not signed in, `403 Forbidden` when signed in but not permitted, `404 Not Found` when the requested resource does not exist or should not be disclosed, and `409 Conflict` for duplicates.
-- Money amounts are exact decimal strings, never JSON numbers, and their precision is currency-specific: an amount denominated in a currency whose ISO 4217 minor-unit exponent is E carries exactly E fractional digits, and carries no decimal point at all when E is 0. Examples: "100.00" (CAD, E = 2), "0.05" (EUR), "2500" (JPY, E = 0), "1.250" (KWD, E = 3). The integer part always has 1–9 digits. The server parses each amount into an integer count of that currency's minor units (cents, yen, fils, …), stores the integer alongside the ISO code, and performs all arithmetic on integers: binary floating point never touches a money value, 0.1 + 0.2 style drift is impossible, and no amount is silently rounded.
+- Money amounts are exact decimal strings, never JSON numbers, with exactly the currency's ISO 4217 exponent in fractional digits (no decimal point for exponent 0). Original request amounts have 1–9 integer digits and must be represented exactly. Converted totals may be larger, must fit signed 64-bit minor units, and explicitly use decimal `HALF_UP` rounding to base precision. Balances aggregate integer minor units without an individual-expense limit. Binary floating point never touches a monetary value.
 - Every money figure carries an explicit ISO 4217 code, and currencies are never mixed inside one figure.
 
 ## Authentication
@@ -77,7 +77,7 @@ Suggested response: `200 OK` with an array. An empty list is `[]`.
 
 ```json
 [
-  { "id": 7, "name": "Vancouver Trip", "createdAt": "2026-10-28T18:30:00Z" }
+  { "id": 7, "name": "Vancouver Trip", "createdAt": "2026-10-28T18:30:00Z", "baseCurrency": "CAD" }
 ]
 ```
 
@@ -92,10 +92,11 @@ Example request:
 ```json
 {
   "name": "Vancouver Trip",
+  "baseCurrency": "CAD"
 }
 ```
 
-Suggested response: `201 Created` with the new group, e.g. `{ "id": 7, "name": "Vancouver Trip", "createdAt": "2026-10-28T18:30:00Z" }`.
+Response: `201 Created` with `{ "id": 7, "name": "Vancouver Trip", "createdAt": "2026-10-28T18:30:00Z", "baseCurrency": "CAD" }`. `baseCurrency` is required, uppercase ISO 4217 with a defined minor-unit exponent from 0 through 4. It is immutable from creation; no update endpoint is exposed. Group listing also includes `baseCurrency`.
 
 ### `GET /api/groups/{groupId}`
 
@@ -148,7 +149,7 @@ Suggested behavior and responses:
 
 An expense records money that one group member paid on behalf of selected members of the same group. It carries two distinct roles: the member who recorded it (createdBy, always derived from the authenticated session) and the member who actually paid (paidBy, chosen by the creator from the group's current members). The same person often fills both roles, but the API never assumes it.
 
-Each expense also carries its own ISO 4217 currency, supplied explicitly when the expense is created or edited.
+Each expense carries its original ISO 4217 currency and amount, plus its group's immutable base currency, locked exchange rate, rate date, and rounded converted total. Rates are latest daily reference rates at recording time, not at the expense's calendar date. Reads never revalue expenses.
 
 ### Expense Representation/Object
 
@@ -159,6 +160,10 @@ Each expense also carries its own ISO 4217 currency, supplied explicitly when th
   "description": "Dinner",
   "amount": "100.00",
   "currency": "CAD",
+  "baseCurrency": "CAD",
+  "convertedAmount": "100.00",
+  "exchangeRate": "1",
+  "rateDate": "2026-11-14",
   "paidBy": { "id": 57, "email": "sam@example.com" },
   "createdBy": { "id": 42, "email": "alex@example.com" },
   "splitType": "equal",
@@ -173,6 +178,21 @@ Each expense also carries its own ISO 4217 currency, supplied explicitly when th
   "updatedAt": "2026-11-14T18:30:00Z"
 }
 ```
+
+### `POST /api/groups/{groupId}/expenses/quote`
+
+Authenticated group members (no admin membership bypass) may preview `{ "amount": "100.00", "currency": "USD" }`. Only these two fields are accepted; amount validation matches expense creation.
+
+Response `200`: `{ "baseCurrency": "CAD", "convertedAmount": "140.00", "exchangeRate": "1.4", "rateDate": "2026-11-13" }`.
+
+The server calls [Frankfurter](https://frankfurter.dev/) and caches rates by ordered currency pair and UTC request date, preserving the provider's actual observation date. Same-currency quotes use `1` without an external request. Preview does not persist anything; creation authoritatively resolves the rate again, so crossing UTC dates may change it. Conversion rounds the total once using decimal `HALF_UP` at base precision. Converted totals must fit a signed 64-bit minor-unit count; overflow is a validation error.
+
+Provider failures/unsupported pairs return `503` with `{ "error": "exchange_rate_unavailable", "message": "...", "fields": {} }`; no expense is saved and the form preserves input for retry. Invalid quote input returns `400`; anonymous callers `401`; non-members `404`.
+
+### `POST /api/expenses/{expenseId}/quote`
+
+Same request/response as creation preview, restricted to the expense creator while still a group member. If currency is unchanged, uses the stored exchange rate and rate date; otherwise obtains the latest quote. This preview does not modify the expense. Non-members receive `404`, other members `403`.
+
 
 ### `POST /api/groups/{groupId}/expenses`
 
@@ -198,7 +218,7 @@ NOTE: Custom splitting is currently not supported. It will come in a later itera
 | `paidByUserId`   | no       | Integer user ID; must be a current member of the group. Defaults to the authenticated creator when omitted. Independent of `participantIds`: the payer need not appear in the split. |
 | `participantIds` | no       | Non-empty array of unique integers; each must be a current member of the group; at most the current member count. When omitted, all current group members participate. Explicit `null` and empty arrays are invalid. The payer may appear or not appear. |
 
-Equal splits use integer minor units. Participants are sorted by ascending user ID; each receives `amountMinor / participantCount`, and the first `amountMinor % participantCount` participants receive one additional minor unit. Split amounts always sum exactly to the expense amount; zero shares are allowed. Responses list splits in this same order.
+Equal splits use **base-currency** minor units after rounding the converted total. Participants are sorted by ascending user ID; each receives `convertedAmountMinor / participantCount`, and the first `convertedAmountMinor % participantCount` participants receive one additional minor unit. Split amounts always sum exactly to `convertedAmount`, not the original amount; zero shares and a zero converted total are allowed. Responses list splits in this same order.
 
 Only omitted optional fields receive defaults. Explicit `null` values are invalid. Money must be a JSON string; IDs must be JSON integers, not strings or fractional numbers. Expense creation requires group membership even for admins.
 
@@ -223,6 +243,7 @@ Error behavior:
 - `400 Bad Request` — malformed JSON, unknown/immutable field (`unsupported_field`), or any field-rule violation (`validation_failed`). Participant IDs that do not exist or are not members of this group, and a `paidByUserId` that is not a current member, are request errors, not `404`.
 - `401 Unauthorized` — not signed in.
 - `404 Not Found` — group does not exist or the caller is not a member. Group existence is not disclosed to non-members.
+- `503 Service Unavailable` — the exchange-rate provider failed or has no usable rate for the currency pair. Nothing is persisted; preserve form input and retry.
 - `500 Internal Server Error` — persistence failure.
  
 ### `GET /api/groups/{groupId}/expenses`
@@ -266,8 +287,8 @@ Semantics:
 - Provided fields replace the stored values; omitted fields keep their current values.
 - `participantIds`, when present, replaces the entire participant set (not a merge) and must contain only current group members. When omitted, stored participants remain unchanged, including former members.
 - `paidByUserId`, when present, replaces the payer and is validated the same way as on creation: it must reference a current member of the group, including the creator's own ID when they paid. When it is omitted, the stored `paidBy` is kept as-is and is not revalidated against current membership, so an expense whose payer later left the group still credits that user in balances.
-- Supplied `amount` is validated against the effective currency (supplied `currency`, or the stored currency when omitted). A currency-only change retains the numeric amount and rescales minor units exactly: CAD `"10.00"` becomes JPY `"10"`, but CAD `"10.01"` cannot become JPY without a replacement amount. Inexact conversion returns `400` on `amount`; no rounding or exchange-rate conversion occurs.
-- Changes to amount, currency, or participants recalculate equal shares with the same ascending-user-ID remainder rule as creation. Parent fields and split rows are persisted in one transaction; a failure rolls back both.
+- Supplied `amount` is validated against the effective original currency (supplied `currency`, or stored currency when omitted). A currency-only change retains the numeric original amount and rescales minor units exactly: CAD `"10.00"` becomes JPY `"10"`, but `"10.01"` cannot become JPY without a replacement amount.
+- Amount-only changes reuse the stored rate/date. Changing the original currency obtains a new latest rate and converted total; changing it to the base currency uses `1` without an API call. Other edits do not refresh rates. Amount, currency, or participant changes recalculate equal shares from the converted total with the ascending-user-ID remainder rule. Provider failures return `503`; all parent/conversion/split changes roll back together.
 - `id`, `groupId`, `createdBy`, and `createdAt` never change. Every successful patch advances `updatedAt`; expense timestamps use database-compatible microsecond precision.
 - Concurrent edits and deletions serialize on the expense row. Non-members receive `404` before creator checks; another member, including an admin or the payer, receives `403`.
 
@@ -306,15 +327,15 @@ Error behavior:
 
 Balances are derived on demand from surviving expenses. Edits and deletions are reflected on the next read; balances and suggested transfers are not stored.
 
-For each expense, the payer (`paidBy`) is credited the full amount and each stored split debits its participant. The creator is not credited unless they are also the payer. Stored shares are authoritative; equal shares are not recalculated during a balance read.
+For each expense, the payer (`paidBy`) is credited the stored converted total in the group's base currency and each stored split debits its participant in that same currency. The creator is not credited unless they are also the payer. Stored shares are authoritative; neither conversion nor equal shares are recalculated during balance reads.
 
-`paid`, `owed`, and `net` are exact decimal strings formatted at the currency's ISO 4217 exponent. Arithmetic uses integer minor units and aggregate totals are not limited by an individual expense's amount limit. `net = paid - owed`: positive is receivable, negative is payable. Each currency is balanced independently; no exchange rates or cross-currency netting apply.
+`paid`, `owed`, and `net` are exact decimal strings at the **group base currency's** ISO 4217 exponent. Arithmetic uses integer minor units and aggregate totals are not limited by an individual expense's amount limit. `net = paid - owed`: positive is receivable, negative is payable. Foreign expenses are consolidated using their stored converted totals; rate fluctuations cannot change this ledger.
 
-Suggested transfers are deterministic and advisory, not recorded payments. For each currency, initialize creditors with positive net and debtors with the absolute value of negative net. Repeatedly select the largest remaining creditor and debtor (ties by ascending user ID), transfer the smaller remainder, then reinsert any nonzero remainder into its priority queue. Zero-net members are excluded and transfer order is the order emitted by this algorithm.
+Suggested transfers are deterministic and advisory, not recorded payments, and operate exclusively in the group base currency. Initialize creditors with positive net and debtors with absolute negative net. Repeatedly select the largest remaining creditor and debtor (ties by ascending user ID), transfer the smaller remainder, then reinsert any nonzero remainder. Zero-net members are excluded.
 
 ### `GET /api/groups/{groupId}/balances`
 
-Returns all currencies represented by surviving group expenses, sorted by currency code. Each currency section includes the full roster and has monetary fields formatted to that currency's exponent.
+Returns exactly one `currencies` section, denominated in the group's base currency, including for an empty group. It includes the full roster and monetary fields formatted at base precision.
 
 ```json
 {
@@ -342,8 +363,8 @@ Returns all currencies represented by surviving group expenses, sorted by curren
 Semantics:
 
 - Top-level `members` contains every current group member plus each payer and split participant in a surviving expense, sorted by ID. Former participants remain included, including participants whose stored share is zero. Expense creators are not included solely because they authored an expense. Profiles expose only `id` and `email`.
-- Every currency section repeats that roster in its `members` array, sorted by `userId`; inactive members have zero `paid`, `owed`, and `net` at that currency's precision.
-- A currency section remains present if surviving expenses in that currency net to zero, with `transfers: []`. With no expenses, `currencies` is empty and the top-level roster still contains current members.
+- The base-currency section repeats that roster sorted by `userId`; inactive members have zero `paid`, `owed`, and `net`.
+- With no expenses or no outstanding balances, the base-currency section remains present with `transfers: []`.
 - `generatedAt` is the response assembly time. It is not an edit timestamp or cache key.
 - The endpoint is group-scoped and requires membership, including for admins. It does not paginate.
 

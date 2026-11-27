@@ -10,7 +10,7 @@ The goal is to simplify shared expense management by automating calculations, tr
 - **Group Management:** Create groups, invite members, and manage shared expenses.
 - **Expense Splitting:** Split bills equally, by percentage, ratio, or exact amount.
 - **Balance & Settlement:** Track debts, calculate balances, and record settlements.
-- **Multi-Currency Support:** Convert expenses using real-time exchange rates.
+- **Multi-Currency Support:** Lock Frankfurter daily reference rates per expense; track balances and settlement suggestions in the group's base currency.
 - **Automatic Categorization:** Classify expenses using natural language processing.
 - **Notifications:** Reminders for outstanding balances and expense updates.
 
@@ -76,6 +76,15 @@ docker compose up
 ```
 
 The frontend dev server is hosted at `http://localhost:5173` and all API requests are proxied to the Spring Boot backend. The Docker containers mount the local filesystem rather than copying so any changes made locally will automatically update.
+
+### Currency conversion
+
+Choose an immutable ISO 4217 base currency when creating a group. Foreign expenses retain their original amount and currency alongside the locked rate, provider rate date, and converted total. The form previews conversion before saving; failures preserve input. Rates come from [Frankfurter](https://frankfurter.dev/), use the latest daily reference available at recording time (not the expense date), and are cached by pair and UTC request date. They are not live market rates. Configure `zeroed.exchange-rates.base-url` to use a self-hosted provider.
+
+Conversion uses decimal `HALF_UP` rounding to the base currency's minor unit, once on the total, then allocates equal shares with deterministic remainders. Amount-only edits reuse the stored rate; changing the original currency obtains a new rate. Balance reads never fetch rates. Same-currency expenses bypass the provider.
+
+There are currently settlement suggestions, not recorded settlement payments.
+
 
 ## Production Build
 
