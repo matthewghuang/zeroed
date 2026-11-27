@@ -41,12 +41,13 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
     const addExpenseButtonRef = useRef<HTMLButtonElement>(null);
     const dialogRef = useRef<HTMLDivElement>(null);
     const selectedGroup = groups?.find((group) => String(group.id) === groupId) ?? null;
+    const isExpenseModalOpen = isCreateExpenseModal && selectedGroup !== null && !loading && !errorMessage;
 
     const navigate = useNavigate();
     const closeExpenseModal = () => navigate(`/groups/${groupId}`, { replace: true });
 
     useEffect(() => {
-        if (!isCreateExpenseModal) return;
+        if (!isExpenseModalOpen) return;
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         dialogRef.current?.focus();
@@ -64,7 +65,7 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
             if (!focusable.length) return;
             const first = focusable[0];
             const last = focusable[focusable.length - 1];
-            if (event.shiftKey && document.activeElement === first) {
+            if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
                 event.preventDefault();
                 last.focus();
             } else if (!event.shiftKey && document.activeElement === last) {
@@ -78,7 +79,7 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
             document.removeEventListener('keydown', handleKeyDown);
             requestAnimationFrame(() => addExpenseButtonRef.current?.focus());
         };
-    }, [isCreateExpenseModal, groupId]);
+    }, [isExpenseModalOpen, groupId]);
 
     const fetchGroups = async (signal?: AbortSignal) => {
         setLoading(groupId !== undefined || groups === null);
@@ -101,7 +102,7 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
             if (axios.isAxiosError(error) && error.response?.status === 401) {
                 navigate('/login', {
                     replace: true,
-                    state: { from: groupId === undefined ? '/groups' : `/groups/${encodeURIComponent(groupId)}` },
+                    state: { from: isCreateExpenseModal ? location.pathname : groupId === undefined ? '/groups' : `/groups/${encodeURIComponent(groupId)}` },
                 });
             } else if (axios.isAxiosError(error) && [403, 404].includes(error.response?.status ?? 0)) {
                 setErrorMessage('Group not found or you do not have access to it.');
@@ -113,11 +114,12 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
         }
     };
 
+    // Navigation within this group's modal must not reload or unmount the group view.
     useEffect(() => {
         const controller = new AbortController();
         void fetchGroups(controller.signal);
         return () => controller.abort();
-    }, [groupId, navigate]);
+    }, [groupId]);
 
     const fetchMembers = async (id: number) => {
         try {
@@ -146,7 +148,9 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat'
             }}>
-            <MainHeader />
+            <div className="flex-shrink-0" inert={isCreateExpenseModal}>
+                <MainHeader />
+            </div>
 
             {/* Sidebar */}
             <div className='d-flex flex-grow-1 overflow-hidden' inert={isCreateExpenseModal}>
@@ -275,7 +279,7 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                     )}
                 </main>
             </div>
-            {isCreateExpenseModal && selectedGroup && !loading && !errorMessage && (
+            {isExpenseModalOpen && selectedGroup && (
                 <div
                     className="expense-modal-backdrop"
                     onMouseDown={(event) => {
