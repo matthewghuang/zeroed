@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import GroupForm from "../components/GroupForm";
 import ExpenseForm from "../components/ExpenseForm";
@@ -8,10 +8,11 @@ import ExpenseView from '../components/ExpenseView';
 import MainHeader from '../components/MainHeader';
 import bgImage from '../assets/zeroedBG.png';
 import GroupView from '../components/GroupView';
+import ErrorNotif from '../components/ErrorNotif';
 import api from "../api";
 
 // properties for each group in group list view
-interface Group {
+export interface Group {
     id: number;
     name: string;
 }
@@ -30,56 +31,70 @@ interface Member {
     email: string;
 }
 
-function GroupPage() {
+interface GroupPageProps {
+    groups: Group[] | null;
+    onGroupsLoaded: (groups: Group[]) => void;
+}
+
+function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
+    const { groupId } = useParams();
     const [currentView, setCurrentView] = useState<'groupView' | 'createGroup' | 'createExpense' | 'expenseList' | 'expenseView'>('groupView');
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const [members, setMembers] = useState<Member[]>([]);
-    const [groups, setGroups] = useState<Group[]>([]);
-    const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+    const [loading, setLoading] = useState(groupId !== undefined || groups === null);
+    const [errorMessage, setErrorMessage] = useState('');
+    const selectedGroup = groups?.find((group) => String(group.id) === groupId) ?? null;
 
     const navigate = useNavigate();
 
-    const fetchGroups = async () => {
+    const fetchGroups = async (signal?: AbortSignal) => {
+        setLoading(groupId !== undefined || groups === null);
+        setErrorMessage('');
         try {
-            const response = await api.get('/api/groups');
-            const userGroups: Group[] = response.data;
-            setGroups(userGroups);
-            
-            // user is in atleast 1 group
-            if (userGroups.length > 0) {
-                setSelectedGroup(userGroups[0]); // first group visible
-                setCurrentView('groupView');     // make the groups view active
-            } else {
-                setCurrentView('createGroup')    // make the group create view active
+            const response = await api.get<Group[]>('/api/groups', { signal });
+            onGroupsLoaded(response.data);
+
+            if (groupId !== undefined) {
+                const group = response.data.find((group) => String(group.id) === groupId);
+                if (!group) {
+                    setErrorMessage('Group not found or you do not have access to it.');
+                } else {
+                    const response = await api.get<Member[]>(`/api/groups/${group.id}/members`, { signal });
+                    setMembers(response.data);
+                }
             }
         } catch (error) {
-            console.error("Failed to fetch groups", error);
+            if (axios.isCancel(error)) return;
             if (axios.isAxiosError(error) && error.response?.status === 401) {
-                navigate('/login');
+                navigate('/login', {
+                    replace: true,
+                    state: { from: groupId === undefined ? '/groups' : `/groups/${encodeURIComponent(groupId)}` },
+                });
+            } else if (axios.isAxiosError(error) && [403, 404].includes(error.response?.status ?? 0)) {
+                setErrorMessage('Group not found or you do not have access to it.');
+            } else {
+                setErrorMessage('Unable to load groups. Please try again later.');
             }
+        } finally {
+            if (!signal?.aborted) setLoading(false);
         }
-    }
+    };
+
     useEffect(() => {
-        fetchGroups();
-    }, []);
+        const controller = new AbortController();
+        void fetchGroups(controller.signal);
+        return () => controller.abort();
+    }, [groupId, navigate]);
 
-    const fetchMembers = async (groupId: number) => {
+    const fetchMembers = async (id: number) => {
         try {
-            const response = await api.get(`/api/groups/${groupId}/members`)
+            const response = await api.get<Member[]>(`/api/groups/${id}/members`);
             setMembers(response.data);
-        } catch (error) {
+        } catch {
             setMembers([]);
-            console.error("Failed to fetch members", error)
+            setErrorMessage('Unable to load group members. Return to Groups and try again.');
         }
-    }
-
-    useEffect(() =>{
-        if (selectedGroup) {
-            fetchMembers(selectedGroup.id);
-        } else {
-            setMembers([]);
-        }
-    }, [selectedGroup]);
+    };
 
     const signOut = async () => {
         try {
@@ -104,27 +119,28 @@ function GroupPage() {
             <div className='d-flex flex-grow-1 overflow-hidden'>
                 <div className="d-flex flex-column align-items-stretch flex-shrink-0 border-end border-black h-100" style={{ width: "200px", backgroundColor: '#211824' }}>
                     {/* Header */}
-                    <a className="d-flex align-items-center flex-shrink-0 p-3 link-body-emphasis text-decoration-none border-bottom border-black" style={{ backgroundColor: '#342835' }}>
+                    <Link to="/groups" onClick={() => setCurrentView('groupView')} className="d-flex align-items-center flex-shrink-0 p-3 link-body-emphasis text-decoration-none border-bottom border-black" style={{ backgroundColor: '#342835' }}>
                         <span className="fs-5 fw-semibold text-white">Groups</span>
-                    </a>
+                    </Link>
                     {/* Scrollable Group List */}
                     <div className="list-group list-group-flush border-bottom border-black scrollarea flex-grow-1" style={{ overflowY: 'auto' }}>
                         {/* Items */}
                         <div className="text-center p-4 text-muted" style={{ fontSize: '0.85rem' }}>
-                            {groups.length === 0 ? (
+                            {groups?.length === 0 ? (
                                 <div>No groups yet</div>
                             ) : (
-                                groups.map((group) => (
-                                    <button
+                                groups?.map((group) => (
+                                    <Link
                                         key={group.id}
+                                        to={`/groups/${group.id}`}
                                         onClick={() => {
-                                            setSelectedGroup(group);
                                             setCurrentView('groupView');
-                                            
+                                            setSelectedExpense(null);
                                         }}
+                                        aria-current={selectedGroup?.id === group.id ? 'page' : undefined}
                                         className={`list-group-item card border border-secondary text-white mb-3 shadow-lg p-4 ${selectedGroup?.id === group.id ? 'active' : ''}`} style={{ backgroundColor: selectedGroup?.id === group.id ? '#4a3a4d' : '#342835', width: "100%"}}>
                                         {group.name}
-                                        </button>
+                                    </Link>
                                 ))
                             )}
                         </div>
@@ -146,6 +162,28 @@ function GroupPage() {
                 </div>
                 {/* Main Content Switch*/}
                 <main className="d-flex flex-grow-1 justify-content-center align-items-center p-4">
+                    {loading ? (
+                        <p className="text-white" role="status">Loading groups…</p>
+                    ) : errorMessage ? (
+                        <ErrorNotif message={errorMessage} />
+                    ) : (
+                        <>
+                    {currentView === 'groupView' && groupId === undefined && (
+                        <section className="card border border-secondary text-white shadow-lg p-4" style={{ backgroundColor: '#342835' }}>
+                            <h1>Groups</h1>
+                            {groups?.length === 0 ? (
+                                <p>No groups yet. Create a group to get started.</p>
+                            ) : (
+                                <ul>
+                                    {groups?.map((group) => (
+                                        <li key={group.id}>
+                                            <Link className="text-white" to={`/groups/${group.id}`}>{group.name}</Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </section>
+                    )}
                     {currentView === 'groupView' && selectedGroup && (
                         <GroupView
                             selectedGroup={selectedGroup}
@@ -158,7 +196,10 @@ function GroupPage() {
                     {currentView === 'createGroup' && (
                         <GroupForm
                             onSwitchToView={() => setCurrentView('groupView')}
-                            onGroupCreated={fetchGroups}
+                            onGroupCreated={() => {
+                                setCurrentView('groupView');
+                                void fetchGroups();
+                            }}
                         />
                     )}
                     {currentView === 'createExpense' && selectedGroup && (
@@ -187,6 +228,8 @@ function GroupPage() {
                             onOpenExpenseEdit={() => setCurrentView('createExpense')}
                             onBackToList={() => setCurrentView('expenseList')}
                         />
+                    )}
+                        </>
                     )}
                 </main>
             </div>

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import logoImage from '../assets/zeroedIconLeft.png';
 
 function LoginHeader() {
@@ -16,7 +17,7 @@ function LoginHeader() {
             <div className="mb-2 border-bottom ms-auto">
                 <div className="d-flex gap-2">
                     <button className="btn btn-outline-light btn-sm">Expenses</button>
-                    <button className="btn btn-outline-light btn-sm">Groups</button>
+                    <Link to="/groups" className="btn btn-outline-light btn-sm">Groups</Link>
                 </div>
             </div>
             <div className="d-flex gap-2 ms-auto">
