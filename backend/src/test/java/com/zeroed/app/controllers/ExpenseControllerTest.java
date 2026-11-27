@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.URI;
@@ -245,7 +246,7 @@ class ExpenseControllerTest {
         LocalDate after = LocalDate.now(ZoneOffset.UTC);
         assertEquals(201, response.statusCode(), response.body());
         JsonNode body = json.readTree(response.body());
-        assertEquals(java.math.BigDecimal.valueOf(minor, exponent).toPlainString(), body.get("amount").asString());
+        assertEquals(BigDecimal.valueOf(minor, exponent).toPlainString(), body.get("amount").asString());
         assertEquals(currency, body.get("currency").asString());
         assertEquals(creator.getId().longValue(), body.at("/paidBy/id").longValue());
         LocalDate date = LocalDate.parse(body.get("date").asString());

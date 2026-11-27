@@ -2,6 +2,7 @@ package com.zeroed.app.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Currency;
 
 public record ConversionQuote(
         String baseCurrency,
@@ -10,7 +11,7 @@ public record ConversionQuote(
         LocalDate rateDate) {
 
     public long convertedAmountMinor() {
-        int exponent = java.util.Currency.getInstance(baseCurrency).getDefaultFractionDigits();
+        int exponent = Currency.getInstance(baseCurrency).getDefaultFractionDigits();
         try {
             return new BigDecimal(convertedAmount).movePointRight(exponent).longValueExact();
         } catch (ArithmeticException | NumberFormatException exception) {

@@ -19,8 +19,13 @@ import tools.jackson.databind.JsonNode;
 final class ExpenseRequestValidation {
     private static final Set<String> FIELDS = Set.of(
             "description", "amount", "currency", "date", "paidByUserId", "participantIds");
+    // Exactly three uppercase ASCII letters; supported ISO 4217 codes are checked separately.
     private static final Pattern CURRENCY_CODE = Pattern.compile("[A-Z]{3}");
+    // YYYY-MM-DD shape; LocalDate.parse checks calendar validity.
     private static final Pattern DATE = Pattern.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}");
+    // Indexed by currency exponent (0–4): 1–9 integer digits, with an optional
+    // decimal point followed by 1–exponent fractional digits (none for exponent 0).
+    // Signs, whitespace, and scientific notation are not accepted.
     private static final Pattern[] AMOUNTS = {
         Pattern.compile("[0-9]{1,9}"), Pattern.compile("[0-9]{1,9}(?:\\.[0-9])?"),
         Pattern.compile("[0-9]{1,9}(?:\\.[0-9]{1,2})?"), Pattern.compile("[0-9]{1,9}(?:\\.[0-9]{1,3})?"),

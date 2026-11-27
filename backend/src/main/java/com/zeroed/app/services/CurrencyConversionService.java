@@ -2,6 +2,7 @@ package com.zeroed.app.services;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.zeroed.app.dto.ConversionQuote;
+import com.zeroed.app.exceptions.ExpenseRequestException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
@@ -62,7 +63,7 @@ public class CurrencyConversionService {
                     .setScale(targetExponent, RoundingMode.HALF_UP);
             converted.movePointRight(targetExponent).longValueExact();
         } catch (ArithmeticException exception) {
-            throw com.zeroed.app.exceptions.ExpenseRequestException.invalid(
+            throw ExpenseRequestException.invalid(
                     "amount", "converted amount is outside the supported minor-unit range");
         }
         return new ConversionQuote(target.getCurrencyCode(), converted.toPlainString(), rate.toPlainString(), rateDate);

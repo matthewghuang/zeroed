@@ -3,7 +3,6 @@ package com.zeroed.app.dto;
 import java.util.Currency;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 import com.zeroed.app.exceptions.ExpenseRequestException;
 
@@ -16,7 +15,9 @@ public record ConversionQuoteRequest(long amountMinor, Currency currency) {
         }
         Map<String, String> errors = new LinkedHashMap<>();
         for (String field : body.propertyNames()) {
-            if (!Set.of("amount", "currency").contains(field)) errors.put(field, "is not a supported field");
+            if (!field.equals("amount") && !field.equals("currency")) {
+                errors.put(field, "is not a supported field");
+            }
         }
         if (!errors.isEmpty()) throw new ExpenseRequestException("unsupported_field", errors);
         Currency currency = ExpenseRequestValidation.currency(body.get("currency"), errors);
