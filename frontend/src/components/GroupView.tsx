@@ -11,12 +11,15 @@ interface GroupViewProps {
     selectedGroup: { id: number; name: string; baseCurrency: string } | null;
     members: Member[]
     onOpenExpenseForm: () => void
+    onAddExpenseButtonMount: (button: HTMLButtonElement | null) => void
     onOpenExpenseList: () => void
     onMemberAdded: () => void; // to fetch members again
+    balanceRefreshKey: number;
 }
 
+function GroupView({ selectedGroup, members, onOpenExpenseForm, onAddExpenseButtonMount, onOpenExpenseList, onMemberAdded, balanceRefreshKey }: GroupViewProps) {
 
-function GroupView({ selectedGroup, members, onOpenExpenseForm, onOpenExpenseList, onMemberAdded }: GroupViewProps) {
+
     const [email, setEmail] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -45,6 +48,7 @@ function GroupView({ selectedGroup, members, onOpenExpenseForm, onOpenExpenseLis
         <div className="container-fluid card border border-secondary text-white mb-3 shadow-lg p-4 h-100 overflow-auto" style={{ backgroundColor: '#342835' }}>
             <h1 className="text-center mb-4">{selectedGroup?.name}</h1>
             <button
+                ref={onAddExpenseButtonMount}
                 className="btn btn-outline-light"
                 onClick={onOpenExpenseForm}
             >
@@ -81,7 +85,7 @@ function GroupView({ selectedGroup, members, onOpenExpenseForm, onOpenExpenseLis
                     </li>
                 ))}
             </ul>
-            {selectedGroup && <GroupBalance groupId={selectedGroup.id} baseCurrency={selectedGroup.baseCurrency} />}
+            {selectedGroup && <GroupBalance groupId={selectedGroup.id} baseCurrency={selectedGroup.baseCurrency} refreshKey={balanceRefreshKey} />}
         </div>
     )
 }

@@ -7,9 +7,8 @@ The goal is to simplify shared expense management by automating calculations, tr
 ## Features
 
 - **Accounts & Authentication:** User registration, login, and Google OAuth.
-- **Group Management:** Create groups, invite members, and manage shared expenses.
+- **Group Management:** Create groups, invite members, manage shared expenses, and add expenses in an in-page, shareable modal.
 - **Expense Splitting:** Split bills equally, by percentage, ratio, or exact amount.
-- **Balance & Settlement:** Track debts, calculate balances, and record settlements.
 - **Multi-Currency Support:** Lock Frankfurter daily reference rates per expense; track balances and settlement suggestions in the group's base currency.
 - **Automatic Categorization:** Classify expenses using natural language processing.
 - **Notifications:** Reminders for outstanding balances and expense updates.

@@ -21,7 +21,8 @@ function App() {
     <BrowserRouter>
         <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/groups/:groupId?" element={<GroupRoute />} />
+            <Route path="/groups/:groupId/*" element={<GroupRoute />} />
+            <Route path="/groups" element={<GroupRoute />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
     </BrowserRouter>

@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import GroupForm from "../components/GroupForm";
 import ExpenseForm from "../components/ExpenseForm";
 import ExpenseList from '../components/ExpenseList';
@@ -35,9 +35,51 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(groupId !== undefined || groups === null);
     const [errorMessage, setErrorMessage] = useState('');
+    const location = useLocation();
+    const isCreateExpenseModal = location.pathname === `/groups/${groupId}/expenses/new`;
+    const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
+    const addExpenseButtonRef = useRef<HTMLButtonElement>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
     const selectedGroup = groups?.find((group) => String(group.id) === groupId) ?? null;
+    const isExpenseModalOpen = isCreateExpenseModal && selectedGroup !== null && !loading && !errorMessage;
 
     const navigate = useNavigate();
+    const closeExpenseModal = () => navigate(`/groups/${groupId}`, { replace: true });
+
+    useEffect(() => {
+        if (!isExpenseModalOpen) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        dialogRef.current?.focus();
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeExpenseModal();
+                return;
+            }
+            if (event.key !== 'Tab' || !dialogRef.current) return;
+            const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+            );
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', handleKeyDown);
+            requestAnimationFrame(() => addExpenseButtonRef.current?.focus());
+        };
+    }, [isExpenseModalOpen, groupId]);
 
     const fetchGroups = async (signal?: AbortSignal) => {
         setLoading(groupId !== undefined || groups === null);
@@ -60,7 +102,7 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
             if (axios.isAxiosError(error) && error.response?.status === 401) {
                 navigate('/login', {
                     replace: true,
-                    state: { from: groupId === undefined ? '/groups' : `/groups/${encodeURIComponent(groupId)}` },
+                    state: { from: isCreateExpenseModal ? location.pathname : groupId === undefined ? '/groups' : `/groups/${encodeURIComponent(groupId)}` },
                 });
             } else if (axios.isAxiosError(error) && [403, 404].includes(error.response?.status ?? 0)) {
                 setErrorMessage('Group not found or you do not have access to it.');
@@ -72,11 +114,12 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
         }
     };
 
+    // Navigation within this group's modal must not reload or unmount the group view.
     useEffect(() => {
         const controller = new AbortController();
         void fetchGroups(controller.signal);
         return () => controller.abort();
-    }, [groupId, navigate]);
+    }, [groupId]);
 
     const fetchMembers = async (id: number) => {
         try {
@@ -105,10 +148,12 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat'
             }}>
-            <MainHeader />
+            <div className="flex-shrink-0" inert={isCreateExpenseModal}>
+                <MainHeader />
+            </div>
 
             {/* Sidebar */}
-            <div className='d-flex flex-grow-1 overflow-hidden'>
+            <div className='d-flex flex-grow-1 overflow-hidden' inert={isCreateExpenseModal}>
                 <div className="d-flex flex-column align-items-stretch flex-shrink-0 border-end border-black h-100" style={{ width: "200px", backgroundColor: '#211824' }}>
                     {/* Header */}
                     <Link to="/groups" onClick={() => setCurrentView('groupView')} className="d-flex align-items-center flex-shrink-0 p-3 link-body-emphasis text-decoration-none border-bottom border-black" style={{ backgroundColor: '#342835' }}>
@@ -180,12 +225,11 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                         <GroupView
                             selectedGroup={selectedGroup}
                             members={members}
-                            onOpenExpenseForm={() => {
-                                setSelectedExpense(null);
-                                setCurrentView('createExpense');
-                            }}
+                            onOpenExpenseForm={() => navigate(`/groups/${selectedGroup.id}/expenses/new`, { state: { expenseCreationModal: true } })}
+                            onAddExpenseButtonMount={(button) => { addExpenseButtonRef.current = button; }}
                             onOpenExpenseList={() => setCurrentView('expenseList')}
                             onMemberAdded={() => fetchMembers(selectedGroup.id)}
+                            balanceRefreshKey={balanceRefreshKey}
                         />
                     )}
                     {currentView === 'createGroup' && (
@@ -197,7 +241,7 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                             }}
                         />
                     )}
-                    {currentView === 'createExpense' && selectedGroup && (
+                    {currentView === 'createExpense' && selectedGroup && selectedExpense && (
                         <ExpenseForm
                             groupId={selectedGroup.id}
                             baseCurrency={selectedGroup.baseCurrency}
@@ -235,8 +279,43 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                     )}
                 </main>
             </div>
+            {isExpenseModalOpen && selectedGroup && (
+                <div
+                    className="expense-modal-backdrop"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) closeExpenseModal();
+                    }}
+                >
+                    <div
+                        ref={dialogRef}
+                        className="expense-modal-dialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="expense-modal-title"
+                        tabIndex={-1}
+                    >
+                        <div className="expense-modal-header">
+                            <h2 id="expense-modal-title" className="h4 mb-0">Add expense to {selectedGroup.name}</h2>
+                            <button type="button" className="btn-close btn-close-white" aria-label="Close expense form" onClick={closeExpenseModal} />
+                        </div>
+                        <ExpenseForm
+                            groupId={selectedGroup.id}
+                            baseCurrency={selectedGroup.baseCurrency}
+                            members={members}
+                            expense={null}
+                            onExpenseCreated={() => {
+                                setBalanceRefreshKey((key) => key + 1);
+                                closeExpenseModal();
+                            }}
+                        />
+                        <div className="d-flex justify-content-end mt-3">
+                            <button type="button" className="btn btn-outline-light" onClick={closeExpenseModal}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-    )
+    );
 }
 
 export default GroupPage
