@@ -131,7 +131,7 @@ function GroupPage({ groups, onGroupsLoaded }: GroupPageProps) {
                                         }}
                                         aria-current={selectedGroup?.id === group.id ? 'page' : undefined}
                                         className={`list-group-item card border border-secondary text-white mb-3 shadow-lg p-4 ${selectedGroup?.id === group.id ? 'active' : ''}`} style={{ backgroundColor: selectedGroup?.id === group.id ? '#4a3a4d' : '#342835', width: "100%"}}>
-                                        {group.name} <small className="ms-1">({group.baseCurrency})</small>
+                                        {group.name}
                                     </Link>
                                 ))
                             )}

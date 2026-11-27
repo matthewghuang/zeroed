@@ -61,7 +61,7 @@ function GroupBalance({ groupId, baseCurrency }: GroupBalanceProps) {
 
     return (
         <section className="border-top border-secondary mt-4 pt-3" aria-labelledby="group-balance-heading">
-            <h4 id="group-balance-heading" className="border-bottom border-secondary pb-2 mb-3">Balances</h4>
+            <h4 id="group-balance-heading" className="border-bottom border-secondary pb-2 mb-3">Balances ({baseCurrency})</h4>
             {error ? (
                 <p className="alert alert-danger">Failed to load group balances.</p>
             ) : balance === null ? (
@@ -72,15 +72,14 @@ function GroupBalance({ groupId, baseCurrency }: GroupBalanceProps) {
                 <div className="d-flex flex-column gap-3">
                     {balance.currencies.filter((section) => section.currency === baseCurrency).map((currency) => (
                         <section key={currency.currency} className="border border-secondary rounded p-3">
-                            <h5 className="mb-3">Balances ({baseCurrency})</h5>
                             <div className="table-responsive">
                                 <table className="table table-dark table-sm align-middle mb-3">
                                     <thead>
                                         <tr>
                                             <th scope="col">Member</th>
-                                            <th scope="col" className="text-end">Paid ({baseCurrency})</th>
-                                            <th scope="col" className="text-end">Owed ({baseCurrency})</th>
-                                            <th scope="col" className="text-end">Net ({baseCurrency})</th>
+                                            <th scope="col" className="text-end">Paid</th>
+                                            <th scope="col" className="text-end">Owed</th>
+                                            <th scope="col" className="text-end">Net</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -94,9 +93,9 @@ function GroupBalance({ groupId, baseCurrency }: GroupBalanceProps) {
                                             return (
                                                 <tr key={member.userId}>
                                                     <th scope="row" className="fw-normal">{profile?.email ?? `Member ${member.userId}`}</th>
-                                                    <td className="text-end">{member.paid} {baseCurrency}</td>
-                                                    <td className="text-end">{member.owed} {baseCurrency}</td>
-                                                    <td className={`text-end fw-semibold ${netClass}`}>{member.net} {baseCurrency}</td>
+                                                    <td className="text-end">{member.paid}</td>
+                                                    <td className="text-end">{member.owed}</td>
+                                                    <td className={`text-end fw-semibold ${netClass}`}>{member.net}</td>
                                                 </tr>
                                             );
                                         })}
@@ -105,14 +104,14 @@ function GroupBalance({ groupId, baseCurrency }: GroupBalanceProps) {
                             </div>
                             <h6>Suggested transfers</h6>
                             {currency.transfers.length === 0 ? (
-                                <p className="text-white-50 mb-0">Everyone is settled in {baseCurrency}.</p>
+                                <p className="text-white-50 mb-0">Everyone is settled.</p>
                             ) : (
                                 <ul className="list-group list-group-flush">
                                     {currency.transfers.map((transfer, index) => (
                                         <li key={`${transfer.from.id}-${transfer.to.id}-${index}`}
                                             className="list-group-item bg-transparent text-white border-secondary px-0">
                                             <span>{transfer.from.email} pays {transfer.to.email}</span>
-                                            <strong className="float-end">{transfer.amount} {baseCurrency}</strong>
+                                            <strong className="float-end">{transfer.amount}</strong>
                                         </li>
                                     ))}
                                 </ul>

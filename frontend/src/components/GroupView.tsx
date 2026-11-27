@@ -43,7 +43,7 @@ function GroupView({ selectedGroup, members, onOpenExpenseForm, onOpenExpenseLis
 
     return (
         <div className="container-fluid card border border-secondary text-white mb-3 shadow-lg p-4 h-100 overflow-auto" style={{ backgroundColor: '#342835' }}>
-            <h1 className="text-center mb-4">{selectedGroup?.name} {selectedGroup && <small className="fs-6">({selectedGroup.baseCurrency})</small>}</h1>
+            <h1 className="text-center mb-4">{selectedGroup?.name}</h1>
             <button
                 className="btn btn-outline-light"
                 onClick={onOpenExpenseForm}
